@@ -1,13 +1,7 @@
 
+SVG-like Path, with enhancements
 
-This archive contains the distribution Math-MPath,
-version 0.01:
+Under development.
 
-  An SVG-like Path, with enhancements
-
-This software is copyright (c) 2017 by Michael E. Sheldrake.
-
-This is free software; you can redistribute it and/or modify it under
-the same terms as the Perl 5 programming language system itself.
-
+This is to be a reworking and expansion of my MikePath.pm.
 
