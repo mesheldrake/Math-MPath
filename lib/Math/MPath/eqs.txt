@@ -1,0 +1,137 @@
+PI = 3.141592653589793238462643383279502884197169399375105820974944592308;
+
+p0 = {x:0,y:0}
+p1 = {x:0,y:0}
+p2 = {x:0,y:0}
+p3 = {x:0,y:0}
+
+A  = p3.x - 3 * p2.x + 3 * p1.x -     p0.x;
+B  =        3 * p2.x - 6 * p1.x + 3 * p0.x;
+C  =                   3 * p1.x - 3 * p0.x;
+D  =                                  p0.x;
+E  = p3.y - 3 * p2.y + 3 * p1.y -     p0.y;
+F  =        3 * p2.y - 6 * p1.y + 3 * p0.y;
+G  =                   3 * p1.y - 3 * p0.y;
+H  =                                  p0.y;
+
+cubQ_x = (3 * (C/A) - (B/A)^2)/9;
+cubsqrtofnegQ_x = sqrt( ( cubQ_x < 0 ? -1:1 ) * cubQ_x); # only used in cubD < 0 case
+cubQ_y = (3 * (G/E) - (F/E)^2)/9;
+cubsqrtofnegQ_y = sqrt( ( cubQ_y < 0 ? -1:1 ) * cubQ_y); # only used in cubD < 0 case
+
+X(t) = (((A * t) + B) * t + C) * t + D;
+Y(t) = (((E * t) + F) * t + G) * t + H;
+
+# yes, t_2 and t_4 are the same
+t_1(x) = -( (B/A) / 3 ) + (  (( (R(x) + sqrtD(x)) )^(1/3)) + ( ( (R(x) - sqrtD(x)) )^(1/3)) );
+t_2(x) = -( (B/A) / 3 ) + (  (( (R(x) + sqrtD(x)) )^(1/3)) + (-(-(R(x) - sqrtD(x)) )^(1/3)) );
+t_3(x) = -( (B/A) / 3 ) + ( -((-(R(x) + sqrtD(x)) )^(1/3)) + (-(-(R(x) - sqrtD(x)) )^(1/3)) );
+t_4(x) = -( (B/A) / 3 ) + (  (( (R(x) + sqrtD(x)) )^(1/3)) + (-(-(R(x) - sqrtD(x)) )^(1/3)) );
+t_5(x) = 2*sqrt(-((3*(C/A) - (B/A)^2)/9)) * cos( ( theta(x)          ) / 3) - (B/A)/3
+t_6(x) = 2*sqrt(-((3*(C/A) - (B/A)^2)/9)) * cos( ( theta(x) + 2*PI   ) / 3) - (B/A)/3
+t_7(x) = 2*sqrt(-((3*(C/A) - (B/A)^2)/9)) * cos( ( theta(x) + 4*PI   ) / 3) - (B/A)/3
+# duplicate real root for the D == 0 case, something like:
+#t_8(x) = one of above t_n(x) results + ((B/A)/3) then /2, then negated, then minus - ((B/A)/3)
+# go back to old solver ode to figure out what you mean by thatis
+
+t_1to4_prime(x)  = (1/(6  * sqrtD(x) * A  )) * (  (preS(x)/((preS(x)^2)^(1/3))) - (preT(x)/((preT(x)^2)^(1/3))) );
+t_5_prime(x) = cubsqrtofnegQ_x/(3*A)) * (sin(theta(x)/3) / (sqrt(-D(x)))
+t_6_prime(x) = cubsqrtofnegQ_x/(3*A)) * (sin((theta(x) + 2*PI)/3) / (sqrt(-D(x)));
+t_7_prime(x) = cubsqrtofnegQ_x/(3*A)) * (sin((theta(x) + 4*PI)/3) / (sqrt(-D(x)));
+
+t_1to4_2prime(x) = (1/(12 * D(x)     * A^2)) * (  (preS(x)/((preS(x)^2)^(1/3))) * ( (1/3) - R(x)/(sqrtD(x)) ) + (preT(x)/((preT(x)^2)^(1/3))) * ( (1/3) + R(x)/(sqrtD(x)) ));
+t_5_2prime(x) = -1 * (cubsqrtofnegQ_x/(6 * D(x) * A^2)) * ( (sin(theta(x)/3) / sqrt(-D(x)))  * R(x) - cos(theta(x)/3)/3 );
+t_6_2prime(x) = -1 * (cubsqrtofnegQ_x/(6 * D(x) * A^2)) * ( (sin((theta(x) + 2*PI)/3) / sqrt(-D(x)))  * R(x) - cos((theta(x) + 2*PI)/3)/3 );
+t_7_2prime(x) = -1 * (cubsqrtofnegQ_x/(6 * D(x) * A^2)) * ( (sin((theta(x) + 4*PI)/3) / sqrt(-D(x)))  * R(x) - cos((theta(x) + 4*PI)/3)/3 );
+
+# these cubic solver derived intermediate term functions could be generalized
+# to work with t(x) or t(y), by passing the set of 4 coefficients for one or the other, along with x or y
+my $theta = sub { # implement acos( R / sqrt( -(Q^3) ) )
+                 my $toAcos =
+                  # implement R
+                  (
+                    (   9.0 * $self->{BdA}*$self->{CdA}
+                      - 27.0 *
+                               # implement C
+                               ($self->{DdA} - $_[0] / $self->{A})
+
+                      - 2.0  * $self->{BdA}**3
+                    )
+                    / 54.0
+                  )
+
+                  /
+
+                  # implement sqrt( -(Q^3) )
+                  sqrt(-(((3*$self->{CdA} - $self->{BdA}**2)/9.0)**3));
+
+                 #implement return acos($toAcos);
+
+                 # snap to bounds - hopefully when just a tiny bit beyond
+                 $toAcos = 1 if $toAcos > 1;
+                 $toAcos = -1 if $toAcos < -1;
+
+                 #      this is arccosine
+                 return atan2(sqrt(1 - $toAcos * $toAcos),$toAcos);
+
+};
+my $D = sub { return
+                   ( (3*$self->{CdA} - $self->{BdA}**2)/9.0 )**3 #   Q^3
+                 + (                                               # + R^2
+                    # implement R
+                    (   9.0  * $self->{BdA}*$self->{CdA}
+                      - 27.0 *
+
+                             # implement C
+                             ($self->{DdA} - $_[0] / $self->{A})
+
+                      - 2.0  * $self->{BdA}**3
+                    )
+                    / 54.0
+                   )**2;
+};
+my $sqrtD = sub {
+                 my $tosqrt =
+                   ( (3*$self->{CdA} - $self->{BdA}**2)/9.0 )**3 #   Q^3
+                 + (                                               # + R^2
+                    # implement R
+                    (   9.0  * $self->{BdA}*$self->{CdA}
+                      - 27.0 *
+
+                             # implement C
+                             ($self->{DdA} - $_[0] / $self->{A})
+
+                      - 2.0  * $self->{BdA}**3
+                    )
+                    / 54.0
+                   )**2;
+                 $tosqrt = 0 if abs($tosqrt) < 1e-14;
+                 return (ref($tosqrt)?bigsqrt($tosqrt):sqrt($tosqrt));
+                };
+my $R = sub {
+             return
+             (   9.0  * $self->{BdA}*$self->{CdA}
+                - 27.0 *
+
+                         # implement C
+                         ($self->{DdA} - $_[0] / $self->{A})
+
+                - 2.0  * $self->{BdA}**3
+              )
+              / 54.0
+};
+
+my $preS = sub {return $R->($_[0])+$sqrtD->($_[0])};
+my $preT = sub {return $R->($_[0])-$sqrtD->($_[0])};
+
+
+
+################
+
+# so thought is, make generic functions with args like this
+t_n(coord,W,X,Y,Z)
+R(coord,W,X,Y,Z)
+etc.
+
+or function templates or function factories or whatever
+is appropriate for whatever language

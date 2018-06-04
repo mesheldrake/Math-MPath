@@ -1,0 +1,18 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Test::More tests => 1;
+
+use Math::MPath;
+
+my $mp = Math::MPath::BezierCubicSegment->new([0.0,0.0],[200.0,80.0],[-100.0,80.0],[100.0,0.0],0.00001,1); # with islite flag
+
+warn "ISA: @Math::MPath::ISA\n";
+
+my $mmp = Math::MPath->new('M0,0L3,4',0.00001);
+
+
+ok(1);
+

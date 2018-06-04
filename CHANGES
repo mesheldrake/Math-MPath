@@ -1,0 +1,15 @@
+==================================================
+Changes from 2017-10-23 00:00:00 +0000 to present.
+==================================================
+
+-----------------------------------------
+version 0.01 at 2017-10-23 15:57:00 +0000
+-----------------------------------------
+
+  Start development on MPath::BezierCubicSegment
+  with old working implementation, and some newly
+  worked out math.
+
+================
+End of releases.
+================

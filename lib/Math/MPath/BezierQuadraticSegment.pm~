@@ -1,0 +1,6 @@
+####################################################################################
+###      Math::MPath::BezierQuadraticSegment   ######################################
+package Math::MPath::BezierQuadraticSegment;
+{
+}
+1;
