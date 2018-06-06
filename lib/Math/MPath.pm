@@ -15,7 +15,6 @@ use Math::MPath::QuadraticFormula; #Eliminate. Used once for line-ellipse inters
 use vars qw($VERSION);
 use strict;
 use warnings;
-#use LWP::Simple;
 use Carp qw(cluck croak);
 use Math::MPath::Function::Root qw(BrentsMethod FalsePosition);
 use POSIX qw();
@@ -31,56 +30,21 @@ sub mergePaths {
         push (@segs,@{$_->{pathSegmentSpecs}}[1 .. scalar(@{$_->{pathSegmentSpecs}}) - 1]);
         }
     my $ret = new Math::MPath(join('',@segs),$_[0]->{resolution},$_[0]->{precision});
-    #foreach (@_) {undef($_);}
     return $ret;
     }
 sub new {
-
     my $class = shift;
     my $self={};
     bless $self,$class;
-#    if ($_[0] =~ /^((file|http|ftp)\:.*)/) {
-#        $_=get($1);die "Couldn't get file: $1" unless defined $_;
-#        s/^#.*\r?\n//g;s/\r?\n//g;
-#        push(@_,$_);
-#        }
-#    else {
-        $self->{pathspec} = shift;
-#        }
-    #print "  making : ",$self->{pathspec},"\n";
+    $self->{pathspec} = shift;
     $self->{resolution} = shift;
     $self->{precision} = @_?shift:$self->{resolution}/1000;
     $self->constructSegments($self->{pathspec});
-    # not used anymore? at least at this composit level $self->{thetaprecision} = $self->{precision}/$self->{xmax};
-    #$self->{length} = getLength($self);
-    #my $toff=0;
-    #$self->{pathThetaToCompThetaRanges}=[];
-    #for (my $i=0;$i<scalar(@{$self->{pathSegments}});$i++) {
-    #    $self->{pathThetaToCompThetaRanges}->[scalar(@{$self->{pathThetaToCompThetaRanges}})] = [$toff,$toff + ($self->{pathSegments}->[$i]->{length}/$self->{length})];
-    #    $toff += ($self->{pathSegments}->[$i]->{length}/$self->{length});
-    #    #now the indexes of those ranges should match the indexes (indeces) of the components
-    #    }
-    #$self->{pathThetaToCompThetaRanges}->[scalar(@{$self->{pathThetaToCompThetaRanges}})-1]->[1]=1;
     return $self;
     }
 sub newlite {
-    my $class = shift;
-    my $self={};
-    bless $self,$class;
-    $self->{isLite}=1;
-#    if ($_[0] =~ /^((file|http|ftp)\:.*)/) {
-#        $_=get($1);die "Couldn't get file: $1" unless defined $_;
-#        s/^#.*\r?\n//g;s/\r?\n//g;
-#        push(@_,$_);
-#        }
-#    else {
-        $self->{pathspec} = shift;
-#        }
-    #print "  making : ",$self->{pathspec},"\n";
-    $self->{resolution} = shift;
-    $self->{precision} = @_?shift:$self->{resolution}/1000;
-    $self->constructSegments($self->{pathspec});
-    my $toff=0;
+    my $self = new(@_);
+    $self->{isLite} = 1;
     return $self;
     }
 sub constructSegments {
@@ -97,30 +61,26 @@ sub constructSegments {
         if ($self->{pathSegmentSpecs}->[$i] =~ /^(Z)/i) {$thisSegSpec=$1.substr($lastM,1);} # so we can treat it as a LineSegment, and start to be smart about paths with subpaths (multiple Ms). Ee should flag it as special case somehow, but we don't yet
         if ($lastSegSpec =~ /^Z/i && $thisSegSpec !~ /^M/i) {$lastSegSpec=$lastM;} #per SVG spec - if no new M following Z, but something else, that something else is from last M
 
-# set these up so they get handled like linetos
-#warn " at $i $thisSegSpec\n";
-if ($thisSegSpec=~/^H/i) {
-    $thisSegSpec=~s/\s//g;
-    if ($i==1) {
-        $lastM=~/M\s*?[0-9\-\.eE]+\s*?[\s,]\s*?([0-9\-\.eE]+)/;
-        $thisSegSpec.=','.$1;
-        }
-    else {$thisSegSpec.=','.$self->{pathSegments}->[$i - 2]->{p2}->[1];}
-    $thisSegSpec=~s/^H/L/;
-#print "h: $thisSegSpec\n";
-    }
-if ($thisSegSpec=~/^V/i) {
-    if ($i==1) {
-        $lastM=~/M\s*?([0-9\-\.eE]+)\s*?[\s,]\s*?[0-9\-\.eE]+/;
-        my $h = $1;
-        $thisSegSpec=~s/^V(.*)$/'L'.$h.','.$1/ei;
-        }
-    else {
-        $thisSegSpec=~s/^V(.*)$/'L'.$self->{pathSegments}->[$i - 2]->{p2}->[0].','.$1/ei;
-        }
-#print "v: $thisSegSpec\n";
-    }
-
+        # set H and V segments up so they get handled like LineTo
+        if ($thisSegSpec=~/^H/i) {
+            $thisSegSpec=~s/\s//g;
+            if ($i==1) {
+                $lastM=~/M\s*?[0-9\-\.eE]+\s*?[\s,]\s*?([0-9\-\.eE]+)/;
+                $thisSegSpec.=','.$1;
+                }
+            else {$thisSegSpec.=','.$self->{pathSegments}->[$i - 2]->{p2}->[1];}
+            $thisSegSpec=~s/^H/L/;
+            }
+        if ($thisSegSpec=~/^V/i) {
+            if ($i==1) {
+                $lastM=~/M\s*?([0-9\-\.eE]+)\s*?[\s,]\s*?[0-9\-\.eE]+/;
+                my $h = $1;
+                $thisSegSpec=~s/^V(.*)$/'L'.$h.','.$1/ei;
+                }
+            else {
+                $thisSegSpec=~s/^V(.*)$/'L'.$self->{pathSegments}->[$i - 2]->{p2}->[0].','.$1/ei;
+                }
+            }
 
         $self->{pathSegments}->[$i - 1] = $self->constructSegment($thisSegSpec,$lastSegSpec);
         $lastSegSpec=$thisSegSpec;
@@ -129,13 +89,6 @@ if ($thisSegSpec=~/^V/i) {
     $self->{maxx} = (reverse sort {$a<=>$b} map {$_->{maxx}} @{$self->{pathSegments}})[0];
     $self->{miny} = (        sort {$a<=>$b} map {$_->{miny}} @{$self->{pathSegments}})[0];
     $self->{maxy} = (reverse sort {$a<=>$b} map {$_->{maxy}} @{$self->{pathSegments}})[0];
-
-    $self->{pathspecparts}=[($self->{pathspec}=~/([MmZzLlHhVvCcSsQqTtAa]|[0-9\-\.e]+[, ]+[0-9\-\.e]+)[, ]*/g)];#might be useful for an interpolation function, to avoid some regex's
-    #print "pathspec parts: ",join("  ,  ",@{$self->{pathspecparts}}) , "\n";
-    $self->{pathspecparts} = [(map {if ($_=~/([0-9\-\.e]+)[, ]+([0-9\-\.e]+)/) {[0,[$1,$2]]} else {[1,$_]}} @{$self->{pathspecparts}})];
-    #print "pathspec parts: ",join("  ,  ",map {ref($_->[1])?"$_->[1]->[0],$_->[1]->[1]":$_->[1]} @{$self->{pathspecparts}}) , "\n";
-
-    #print "minx:$self->{minx},maxx:$self->{maxx},miny:$self->{miny},maxy$self->{maxy}\n";
     }
 sub parameterize {
     my $self=shift;
@@ -162,23 +115,15 @@ sub precision {
     my $np=@_?shift:undef;
     if (defined($np)) {
         $self->{precision}=$np;
-        #$self->{thetaprecision} = $self->{precision}/$self->{xmax};
         foreach (@{$self->{pathSegments}}) {
             $_->{precision}=$self->{precision};
-            #$_->{thetaprecision}=$self->{thetaprecision};
             }
         }
     return $self->{precision};
     }
 
 sub getLength {
-
-    # NOTE - you now support paths with "M" moveto commands
-    # per SVG spec, MoveTo does not contribute to path length
-    # new MoveTo package ISA LineSegment, but it's getLength
-    # is overridden to return zero.
-
-    my $self=shift;
+    my $self = shift;
     my $res = shift;
     if (!defined($res)) {$res=1000;}
     my $length=0;
@@ -313,7 +258,6 @@ sub dimensionalCurve {
                ];
 
         # downgrade any BigFloats
-#        $_ = sprintf("%.15f",$firstpt->[0]->bstr())
         $_ = sprintf("%.15f",$_->bstr())
             for grep ref($_),
                 (@$firstpt,@$endpt);
@@ -342,7 +286,6 @@ sub dimensionalCurve {
             @thispointandtheta=$self->{pathSegments}->[$i]->dimensionalStepFromTheta($thisstep,$prevtheta,1);
 
             # downgrade any BigFloats
-#            $_ = sprintf("%.15f",$firstpt->[0]->bstr())
             $_ = sprintf("%.15f",$_->bstr())
                 for map {warn "saw Big\n";$_}
                     grep ref($_),
@@ -383,7 +326,7 @@ sub dimensionalCurve {
             $first_while_loop = 0;
             }
 
-        # TODO: actually hitting every segment endpoint might be a usful
+        # TODO: actually hitting every segment endpoint might be a useful
         #       option to stick right here. You _don't_ want that for what
         #       you're using this for now, mostly, like getting nicely spaced
         #       locations for radial rail pieces. But it would be good for
@@ -422,7 +365,6 @@ sub f {
 sub F {
     my $self=shift;
     my $y=shift;
-    #my $scalefactor = @_?shift:1; #line seems misguided, obsolete
     my @res;
     foreach ($self->getSegsInRange([undef,$y])) {
         my @these;
@@ -440,18 +382,16 @@ sub point {
     my @seg;
     if (!defined($self->{pathThetaToCompThetaRanges})) {$self->parameterize();} #delay this until you need it
     @seg=$self->getSegThetaIndexAtPathTheta($theta);
-    #print "path->point($theta) find seg?: $seg[0], $seg[1], $seg[2]\n";
     return $seg[0]->point($seg[1]);
     }
 sub getSegThetaIndexAtPathTheta {
-# how do you map segment's non-uniform theta spacing to your path-wide pseudo-theta indexing?
-# here I'm tring to find the segments native theta that correspondes to a given fraction of it's length
-# Expensive, but should be doable. Make it work, then decide if it's too expensive.
+    # how do you map segment's non-uniform theta spacing to your path-wide pseudo-theta indexing?
+    # here I'm tring to find the segments native theta that correspondes to a given fraction of it's length
+    # Expensive, but should be doable. Make it work, then decide if it's too expensive.
     my $self = shift;
     my $theta = shift;
     if (!defined($self->{pathThetaToCompThetaRanges})) {$self->parameterize();} #delay this until you need it
     for (my $i=0;$i < scalar(@{$self->{pathThetaToCompThetaRanges}});$i++) {
-        #warn "test:  (($self->{pathThetaToCompThetaRanges}->[$i]->[0] < $theta || $self->{pathThetaToCompThetaRanges}->[$i]->[0] eq $theta)  &&  ($self->{pathThetaToCompThetaRanges}->[$i]->[1] > $theta || $self->{pathThetaToCompThetaRanges}->[$i]->[1] eq $theta)) ? ",((($self->{pathThetaToCompThetaRanges}->[$i]->[0] < $theta || $self->{pathThetaToCompThetaRanges}->[$i]->[0] eq $theta) && ($self->{pathThetaToCompThetaRanges}->[$i]->[1] > $theta || $self->{pathThetaToCompThetaRanges}->[$i]->[1] eq $theta))?'yes':'no'),"\n";
         if (
             ($self->{pathThetaToCompThetaRanges}->[$i]->[0] < $theta || $self->{pathThetaToCompThetaRanges}->[$i]->[0] eq $theta)
             &&
@@ -469,43 +409,15 @@ sub getPathThetaAtSegTheta {
     my $segtheta = shift;
     if (!defined($self->{pathThetaToCompThetaRanges})) {$self->parameterize();} #delay this until you need it
     my $theta = ( $segtheta * ($self->{pathThetaToCompThetaRanges}->[$segindex]->[1] - $self->{pathThetaToCompThetaRanges}->[$segindex]->[0]) ) + $self->{pathThetaToCompThetaRanges}->[$segindex]->[0];
-    #print "getPathThetaAtSegTheta:\n$theta = ( $segtheta * (",$self->{pathThetaToCompThetaRanges}->[$segindex]->[1]," - ",$self->{pathThetaToCompThetaRanges}->[$segindex]->[0],") ) + ",$self->{pathThetaToCompThetaRanges}->[$segindex]->[0],";\n";
     return $theta;
     }
 sub curve {
     my $self = shift;
     my $cnt  = @_?shift:20;
     my @ret;
-    #my $l=$self->getLength();
-    #my $inc=$l/$cnt;
     my $inc=1/$cnt;
-    #the sprintf is attmpting to overcome increment overshoot at "1" due to inherent rounding errors
-    for (my $i=0;$i<1;$i+=$inc) {push(@ret,$self->point($i));}
+    for (my $i=0;$i<1;$i+=$inc) { push(@ret,$self->point($i)); }
     push(@ret,$self->point(1));
-    #my $inc = abs($self->{maxx} - $self->{minx})/$cnt;
-    #if ($inc>0) {
-    #    foreach (my $i=$self->{minx};$i<=$self->{maxx};$i+=$inc) {
-    #        #print "f($i) = ",$self->f($i),"\n";
-    #        push(@ret,[$i,$self->f($i)]);
-    #        if ($i + $inc > $self->{maxx}) {push(@ret,[$self->{maxx},$self->f($self->{maxx})]);last;}
-    #        }
-    #    }
-    #elsif ($inc eq 0) {
-    #    $inc = abs($self->{maxy} - $self->{miny})/$cnt;
-    #    #print "in MPath curve(), min and max x were same, so using min ($self->{miny}) and max ($self->{maxy}) y, and F()";
-    #    foreach (my $i=$self->{miny};$i<=$self->{maxy};$i+=$inc) {
-    #        #print "F($i) = ",$self->F($i),"\n";
-    #        push(@ret,[$self->F($i),$i]);
-    #        if ($i + $inc > $self->{maxy}) {push(@ret,[$self->F($self->{maxy}),$self->{maxy}]);last;}
-    #        }
-    #    }
-    #else {
-    #    foreach (my $i=$self->{maxx};$i<=$self->{minx};$i+=$inc) {
-    #        #print "f($i) = ",$self->f($i),"\n";
-    #        push(@ret,[$i,$self->f($i)]);
-    #        if ($i + $inc < $self->{minx}) {push(@ret,[$self->{minx},$self->f($self->{minx})]);}
-    #        }
-    #    }
     return @ret;
     }
 sub secondDerivative {
@@ -586,7 +498,6 @@ sub solveXforTheta {
             }
         foreach (@segthetas) {push(@thetas,$toff + (  $self->{pathSegments}->[$i]->getLength(1000,0,$_) / $self->{length}  ));} #uh, I hope
         $toff+=$self->{pathSegments}->[$i]->{length}/$self->{length};
-        #print "toff: $toff after i: $i last length: $self->{pathSegments}->[$i]->{length} self length: $self->{length}\n";
         }
     my %dupsieve;
     @thetas = grep {!$dupsieve{$_}++} @thetas;
@@ -622,11 +533,9 @@ sub normalizeY {
     my $oldx=$self->{minx};
     my $untranslatex=$self->{pathSegments}->[0]->{p1}->[0];
     my $untranslatey=$self->{pathSegments}->[0]->{p1}->[1];
-    #$self->translate(-$self->{minx},-$self->{miny});
     $self->translate(-$self->{pathSegments}->[0]->{p1}->[0],-$self->{pathSegments}->[0]->{p1}->[1]);
     if (abs($ydiff) > 0.0000000000001) {$scalefactor = ($nymax - $nymin)/$ydiff;}
     my $newspec='';
-    #print "yoldspec:",$self->{pathspec},"\n";
     foreach (@{$self->{pathSegmentSpecs}}) {
         my $segTypeLetter = substr($_,0,1);
         my @thesepoints= $self->extractPointsFromPathSpec($_);
@@ -634,7 +543,6 @@ sub normalizeY {
         my $first=1;
         foreach my $point (@thesepoints) {
             if (ref($point) eq 'ARRAY') {
-                #my $newy=$point->[1] * $scalefactor * ($first && $segTypeLetter eq 'A'?(($self->{maxy} - $self->{miny})/(2*$point->[1])):1);
                 my $newy=$point->[1] * $scalefactor;
                 my $newx=$point->[0];
                 if ($constrain && !($first && $segTypeLetter eq 'A')) {
@@ -648,29 +556,10 @@ sub normalizeY {
             $first=0;
             }
         $newspec=substr($newspec,0,-1);
-
-        ##if (!$constrain) {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')? $_->[0].','.eval(substr(''.($_->[1] * $scalefactor),0,25)) : $_} @thesepoints);}
-        #if (!$constrain) {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')? $_->[0].','.($_->[1] * $scalefactor) : $_} @thesepoints);}
-        ##else             {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')?eval(substr(($_->[0] * $scalefactor),0,25)).','.eval(substr(($_->[1] * $scalefactor),0,25)) : $_} @thesepoints);}
-        #else             {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')?($_->[0] * $scalefactor).','.($_->[1] * $scalefactor) : $_} @thesepoints);}
         }
-    #print "ynewspec:$newspec\n";
     $self->constructSegments($newspec);
     my $offset = $nymin - $self->{miny};
-    #$self->translate($oldx,$offset);
     $self->translate($untranslatex,$offset);
-    if ($nymin ne $self->{miny}) {
-    #    print "UH OH y: tried to set miny to $nymin, but it came out as $self->{miny}\n";
-#        print "try to fix that by doing it with bigfloat (or should you have just rounded ?)\n";
-#        my $bignewymin=Math::BigFloat->new(''.$nymin);
-#        my $bigymin=Math::BigFloat->new(''.$self->{miny});
-#        my $smalleroffset = $bignewymin - $bigymin;
-#        if ($smalleroffset) {$self->translate(undef,$smalleroffset);}
-#        if ($bignewymin ne $bigymin) {
-#            print "     same old problem: $bignewymin ne $bigymin\n"
-#            }
-        }
-    #print "ynewspec:",$self->{pathspec},"\n";
     }
 sub normalizeX {
     my $self=shift;
@@ -678,37 +567,23 @@ sub normalizeX {
     my $nxmax = shift;
     my $constrain = @_?shift:0;
     my $scalefactor=1;
-    #print "norm X xoldspec:",$self->{pathspec},"\n";
-    #$self->translate(-$self->{minx},-$self->{miny});
-    #lets do this instead: assume the first point of the path is the reference point
     my $untranslatex=$self->{pathSegments}->[0]->{p1}->[0];
     my $untranslatey=$self->{pathSegments}->[0]->{p1}->[1];
-
     $self->translate(-$self->{pathSegments}->[0]->{p1}->[0],-$self->{pathSegments}->[0]->{p1}->[1]);
     my $xdiff=$self->{maxx} - $self->{minx};
     if (abs($xdiff) > 0.0000000000001) {
         $scalefactor = ($nxmax - $nxmin)/$xdiff;
         }
     my $newspec='';
-    #print "xoldspec:$self->{pathspec}\n";
     foreach (@{$self->{pathSegmentSpecs}}) {
-        #print "pathsegspec:",$_,"\n";
         my $segTypeLetter = substr($_,0,1);
         my @thesepoints= $self->extractPointsFromPathSpec($_);
-        #if (!$constrain) {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')?eval(substr(($_->[0] * $scalefactor),0,25)).','.$_->[1]:$_} @thesepoints);}
-
         $newspec.=$segTypeLetter;
         my $first=1;
         foreach my $point (@thesepoints) {
             if (ref($point) eq 'ARRAY') {
-                #my $newx=$point->[0] * $scalefactor * ($first && $segTypeLetter eq 'A'?(($self->{maxx} - $self->{minx})/(2*$point->[0])):1);
                 my $newx=$point->[0] * $scalefactor ;
                 my $newy=$point->[1];
-
-                #don't recal reason for $first, and now it's causing problem
-                #so I'll comment it out, and recreat a problem to be rediscoverd done the road
-                #so that maybe I can get what I'm working on today working
-                #if ($constrain && !($first && $segTypeLetter eq 'A')) {
                 if ($constrain) {
                     $newy*=$scalefactor;
                     }
@@ -720,30 +595,10 @@ sub normalizeX {
             $first=0;
             }
         $newspec=substr($newspec,0,-1);#chop off last comma
-
-
-        #if (!$constrain) {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')?($_->[0] * $scalefactor).','.$_->[1]:$_} @thesepoints);}
-        ##else             {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')?eval(substr(($_->[0] * $scalefactor),0,25)).','.eval(substr(($_->[1] * $scalefactor),0,25)):$_} @thesepoints);}
-        #else             {$newspec.=$segTypeLetter . join(',',map {(ref($_) eq 'ARRAY')?($_->[0] * $scalefactor).','.($_->[1] * $scalefactor):$_} @thesepoints);}
         }
-    #print "xnewspec:$newspec\n";
     $self->constructSegments($newspec);
     my $offset = $nxmin - $self->{minx};
-
     $self->translate($offset,$untranslatey);
-
-    if ($nxmin ne $self->{minx}) {
-    #    print "UH OH x: tried to set minx to $nxmin, but it came out as $self->{minx}\n";
-#        print "try to fix that by doing it with bigfloat (or should you have just rounded ?)\n";
-#        my $bignxmin=Math::BigFloat->new(''.$nxmin);
-#        my $smalleroffset = $bignxmin - $self->{minx};
-#        if ($smalleroffset) {$self->translate($smalleroffset,0);}
-#        if ($nxmin ne $self->{minx}) {
-#            print "     same old problem: $nxmin ne $self->{minx}\n"
-#            }
-        }
-    #print "norm X newspec:",$self->{pathspec},"\n";
-
     }
 sub translate {
     my $self = shift;
@@ -756,8 +611,6 @@ sub translate {
     my $yoffbig=$yoff;
     if (ref($xoffbig)) {$xoff = 0 + sprintf("%.20f",$xoffbig->bstr());}
     if (ref($yoffbig)) {$yoff = 0 + sprintf("%.20f",$yoffbig->bstr());}
-
-    #print "translate:xoff,yoff:$xoff,$yoff\ntranslate:oldspec:$self->{pathspec}\n";
     my $newspec='';
     foreach (@{$self->{pathSegmentSpecs}}) {
         if (substr($_,0,1) eq 'A') {
@@ -766,25 +619,17 @@ sub translate {
             $newspec.=','.sprintf("%.9f",$pts[$#pts]->[0] + $xoff).','.sprintf("%.9f",$pts[$#pts]->[1] + $yoff);
             }
         else {
-            #$newspec.=substr($_,0,1) . join(',',map {eval(sprintf("%.9f",$_->[0] + $xoff)).','.eval(sprintf("%.9f",$_->[1] + $yoff))} $self->extractPointsFromPathSpec($_));
-            #$newspec.=substr($_,0,1) . join(',',map {eval(substr($_->[0] + $xoff,0,25)).','.eval(substr($_->[1] + $yoff,0,25))} $self->extractPointsFromPathSpec($_));
             $newspec.=substr($_,0,1) . join(',',map {($_->[0] + ((ref($_->[0])&&ref($xoff))?$xoffbig:$xoff)).','.($_->[1] + ((ref($_->[1])&&ref($yoff))?$yoffbig:$yoff))} $self->extractPointsFromPathSpec($_));
             }
         }
     $self->constructSegments($newspec);
-    #print "translate:newspec:",$self->{pathspec},"\n";
     }
-sub scale { # new, untested, copied from javascript version where it seems to work
+sub scale {
     my $self = shift;
     my $xscale = shift;
     my $yscale = shift;
-
-    # this stuff was wrong in javascript, but inertly so
-    # but now I'm fixing it there and here in a way that might introduce weirdness,
-    # since I'm not running and testing this at the moment
     if (!$xscale && $yscale) {$xscale=1;}
     if (!$yscale && $xscale) {$yscale=$xscale;}
-
     my $osp = "scale:oldspec:\n".$self->{pathspec}."\n";
     my $newspec='';
     for (my $i=0;$i<scalar(@{$self->{pathSegmentSpecs}});$i++) {
@@ -792,7 +637,7 @@ sub scale { # new, untested, copied from javascript version where it seems to wo
         if (substr($self->{pathSegmentSpecs}->[$i],0,1) eq 'A') {
             $newspec.=substr($self->{pathSegmentSpecs}->[$i],0,1);
 
-            # TODO: copy this expanded, partly fixed arc scale stuff back to js version
+            # TODO: copy this expanded, partly fixed arc scale stuff back to javascript version
 
             # two radii (these scale, but should remain positive if either scale is negative)
             my $radii = shift @pts;
@@ -807,7 +652,7 @@ sub scale { # new, untested, copied from javascript version where it seems to wo
                 else        {$sweep=1;}
                 }
 
-            # TODO: seems you should take phi into account here
+            # TODO: seems you should take phi into account here. consider.
             if ($phi ne 0) {die "not sure you want to simply scale radii when phi in effect - come address this";}
 
             $newspec.= ($radii->[0]*abs($xscale)) . ',' . ($radii->[1]*abs($yscale)) . ',';
@@ -821,7 +666,6 @@ sub scale { # new, untested, copied from javascript version where it seems to wo
             $newspec.=substr($self->{pathSegmentSpecs}->[$i],0,1) . join(',',map { ($_->[0] * $xscale).','.($_->[1] * $yscale) } @pts);}
             }
     $self->constructSegments($newspec);
-    print $osp,"scale:newspec:\n",$newspec,"\n";
     }
 sub constructSegment {
     my $self = shift;
@@ -849,12 +693,10 @@ sub constructSegment {
     elsif ($segTypeLetter eq 'Z') {return Math::MPath::ClosePath->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
     elsif ($segTypeLetter eq 'z') {return Math::MPath::ClosePath->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
     elsif ($segTypeLetter eq 'A') {return Math::MPath::EllipticalArc->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-
     }
 sub extractPointsFromPathSpec {
     my $self=shift;
     my $segspec = shift;
-    #print "EXTRACTING FROM:$segspec\n";
     my @ret;
     my $segTypeLetter = substr($segspec,0,1);
     if    ($segTypeLetter eq 'M') {push @ret , [split(/[ ,]+/,substr($segspec,1))]}
@@ -866,16 +708,18 @@ sub extractPointsFromPathSpec {
     elsif ($segTypeLetter eq 'z') {push @ret , [split(/[ ,]+/,substr($segspec,1))]}
     elsif ($segTypeLetter eq 'C') {my ($cp1x,$cp1y,$cp2x,$cp2y,$px,$py) = split(/[ ,]+/,substr($segspec,1));push @ret , ([$cp1x,$cp1y],[$cp2x,$cp2y],[$px,$py])}
     elsif ($segTypeLetter eq 'A') {my ($rx,$ry,$phi,$lrgarc,$sweep,$px,$py) = split(/[ ,]+/,substr($segspec,1));push @ret , ([$rx,$ry],$phi,$lrgarc,$sweep,[$px,$py])}
-    for (my $i=0;$i<@ret;$i++) {
-        if (ref($ret[$i]) eq 'ARRAY') {
-            foreach my $num (@{$ret[$i]}) {
-                my $sigdigits=0;
-                if ($num =~ /^-?([0-9]+\.[0-9]+[1-9])0*$/i) {$sigdigits=length($1) - 1;}
-                if ($num =~ /^-?0\.0*([1-9][0-9]+?[1-9])0*$/) {$sigdigits=length($1);} #small numbers that might fit in perl float
-                if ($num =~ /^-?([1-9][0-9]+?[1-9])0*\.?0*$/) {$sigdigits=length($1);} #big numbers that might fit in perl float
-                }
-            }
-        }
+    # vestigal stuff probably related to "perlsize pathspec" efforts
+    #for (my $i=0;$i<@ret;$i++) {
+    #    if (ref($ret[$i]) eq 'ARRAY') {
+    #        foreach my $num (@{$ret[$i]}) {
+    #            my $sigdigits=0;
+    #            if ($num =~ /^-?([0-9]+\.[0-9]+[1-9])0*$/i) {$sigdigits=length($1) - 1;}
+    #            if ($num =~ /^-?0\.0*([1-9][0-9]+?[1-9])0*$/) {$sigdigits=length($1);} #small numbers that might fit in perl float
+    #            if ($num =~ /^-?([1-9][0-9]+?[1-9])0*\.?0*$/) {$sigdigits=length($1);} #big numbers that might fit in perl float
+    #            }
+    #        }
+    #    }
+    
     return @ret;
     }
 
@@ -893,9 +737,6 @@ sub getFeet {
             push(@feet,@f);
             }
         }
-    #if (!scalar(@feet)) {
-    #    #print "NOOOO FEET for [$x,$y]\n";
-    #    }
     return @feet;
     }
 sub getIntersections {
@@ -941,14 +782,9 @@ sub getSegSegIntersects {
         # First some special cases for vertical and horizontal lines.
         my @thetas;
         if ($line->{m} eq 'inf' || $line->{m} eq '-inf') {
-            #then I hope this is right
             @thetas = $curve->solveXforTheta($line->{maxx});
             foreach my $t (@thetas) {
                 my $y = $curve->bezierEvalYofT($t);
-                #print "an y: $y\n";
-                #print "line maxy: $line->{maxy}\n";
-                #if ($y <= $line->{maxy} + $line->{precision} &&
-                #    $y >= $line->{miny} - $line->{precision}) {
                 if (($y < $line->{maxy} || $y eq $line->{maxy}) &&
                     ($y > $line->{miny} || $y eq $line->{miny})) {
                     if ($wantThetas) {
@@ -960,7 +796,6 @@ sub getSegSegIntersects {
                 }
             }
         elsif ($line->{m} eq 0) {
-            #warn "zero slope, snap special";
             if ($wantThetas && !$lineIsSelf) {
                 my @ths = $curve->solveYforTheta($line->{p1}->[1]);
                 push(@ret, grep {my $p=$curve->point($_); ($p->[0] < $line->{maxx} || $p->[0] eq $line->{maxx}) && ($p->[0] > $line->{minx} || $p->[0] eq $line->{minx})} @ths);
@@ -988,17 +823,10 @@ sub getSegSegIntersects {
                 ($curve->{H}-$line->{m}*$curve->{D}-$line->{b}) / ($curve->{E}-$line->{m}*$curve->{A}),
                 1);
 
-            #@thetas = &cubicformula(($curve->{F_Big}-$line->{m}*$curve->{B_Big})/($curve->{E_Big}-$line->{m}*$curve->{A_Big}),($curve->{G_Big}-$line->{m}*$curve->{C_Big})/($curve->{E_Big}-$line->{m}*$curve->{A_Big}),($curve->{H_Big}-$line->{m}*$curve->{D_Big}-$line->{b})/($curve->{E_Big}-$line->{m}*$curve->{A_Big}),1);
-            #print "uh thetas:",join(",",@thetas),"  and line slope:$line->{m}\n";
             @thetas = sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)}  @thetas;
-            #print "uh _Big thetas:",join(",",@thetas),"\n";
-            #@thetas = sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)} @thetas;
+
             foreach my $t (@thetas) {
                 my $x = $curve->bezierEvalXofT($t);
-                #print "an x: $x\n";
-                #print "line maxx: $line->{maxx}\n";
-                #if ($x <= $line->{maxx} + $line->{precision} &&
-                #    $x >= $line->{minx} - $line->{precision}) {
                 if (($x < $line->{maxx} || $x eq $line->{maxx}) &&
                     ($x > $line->{minx} || $x eq $line->{minx})) {
                     if ($wantThetas) {
@@ -1011,31 +839,7 @@ sub getSegSegIntersects {
             }
         }
     elsif ($refstrings=~/(LineSegment|ClosePath).*?--/ && $refstrings=~/--.*?(LineSegment|ClosePath)/) {
-#        # m1x + b1 = m2x + b2
-#        # (m1-m2)x = b2-b1
-#        # x = (b2-b1)/(m1-m2)
-#        my $x;
-#        my $dm = ($seg1->{m}-$seg2->{m});
-#        if    (($seg1->{m} eq 'inf' || $seg1->{m} eq '-inf') && $seg2->{m} ne 'inf' && $seg2->{m} ne '-inf') {$x = $seg1->{p1}->[0];}
-#        elsif (($seg2->{m} eq 'inf' || $seg2->{m} eq '-inf') && $seg1->{m} ne 'inf' && $seg1->{m} ne '-inf') {$x = $seg2->{p1}->[0];}
-#        elsif (abs($dm) > 0.000000000001) {$x=($seg2->{b}-$seg1->{b})/$dm;}
-#        #my $mostprec = ($seg1->{precision}<$seg2->{precision})?$seg1->{precision}:$seg2->{precision};
-#        if (defined($x) &&
-#            #$x <= $seg1->{maxx} + $mostprec &&
-#            #$x >= $seg1->{minx} - $mostprec &&
-#            #$x <= $seg2->{maxx} + $mostprec &&
-#            #$x >= $seg2->{minx} - $mostprec) {
-#            ($x < $seg1->{maxx} || $x eq $seg1->{maxx} ) &&
-#            ($x > $seg1->{minx} || $x eq $seg1->{minx} ) &&
-#            ($x < $seg2->{maxx} || $x eq $seg2->{maxx} ) &&
-#            ($x > $seg2->{minx} || $x eq $seg2->{minx} ) ) {
-#            if ($wantThetas) {push(@ret,($seg1->{m} eq 'inf')?$seg1->solveYforTheta($seg2->f($x)):$seg1->solveXforTheta($x));}
-#            else {push(@ret,[$x,($seg1->{m} eq 'inf' || $seg1->{m} eq '-inf')?$seg2->f($x):$seg1->f($x)]);}
-#            }
 
-
-
-## start new stuff adapted from best working seg_line_intersection() function from elsewhere
         my $segsegret;
 
         my $x1= $seg1->{p1}->[0];my $y1= $seg1->{p1}->[1];
@@ -1057,12 +861,11 @@ sub getSegSegIntersects {
             $b2 = $v1 - ($m2 * $u1);
             $xi=($b2-$b1)/$dm;
             }
-        #print "M1:$m1 , M2:$m2, DM:$dm, XI: $xi\n";
         my @lowhiu=($u2>$u1)?($u1,$u2):($u2,$u1);
         if ($m1 ne 'Inf') {
             my @lowhix=($x2>$x1)?($x1,$x2):($x2,$x1);
             if ($m2 eq 'Inf' &&   ($u2<$lowhix[0] || $u2>$lowhix[1]) ) {
-                #nothing - because no intersection
+                # NO INTERSECTION
                 }
             elsif (
                 ($xi || $xi eq 0) &&
@@ -1073,10 +876,13 @@ sub getSegSegIntersects {
                 ) {
                 my $y=($m1*$xi)+$b1;
                 my @lowhiv=($v2>$v1)?($v1,$v2):($v2,$v1);
-                if ($m2 eq 'Inf' && # in this case we set $xi above even though thre might not be an intersection. If $y not in range of other seg's y extremes, no intersection
+                if ($m2 eq 'Inf' &&
                     ($y<$lowhiv[0] || $y>$lowhiv[1])
                     ) {
-                    #nothing
+                    # NO INTERSECTION
+                    # In this case we set $xi above even though there might not 
+                    # be an intersection. If $y is not in range of the other
+                    # seg's y extremes, there is no intersection.
                     }
                 else {
                     $segsegret = [$xi,$y];
@@ -1107,9 +913,6 @@ sub getSegSegIntersects {
             if ($wantThetas) {push(@ret,($m1 eq 'Inf')?$seg1->solveYforTheta($segsegret->[1]):$seg1->solveXforTheta($segsegret->[0]));}
             else {push(@ret,$segsegret);}
             }
-### end new stuff
-
-
         }
     elsif (($refstrings=~/LineSegment/ || $refstrings=~/ClosePath/) && $refstrings=~/EllipticalArc/) {
         my $line;
@@ -1122,13 +925,10 @@ sub getSegSegIntersects {
         my $y1=$line->{p1}->[1];
         my $x2=$line->{p2}->[0];
         my $y2=$line->{p2}->[1];
-        #print "line-arc intercepts:\n    line : [$x1,$y1] , [$x2,$y2]\n";
         $x1-=$arc->{cx};
         $y1-=$arc->{cy};
         $x2-=$arc->{cx};
         $y2-=$arc->{cy};
-        #print "if ($line->{maxx}>$arc->{minx} && $line->{minx}<$arc->{maxx} && $line->{maxy}>$arc->{miny} && $line->{miny}<$arc->{maxy}) {\n";
-        #if ($line->{maxx}>$arc->{minx} && $line->{minx}<$arc->{maxx} && $line->{maxy}>$arc->{miny} && $line->{miny}<$arc->{maxy}) {
         if (
             ($line->{maxx}>$arc->{minx}  || $line->{maxx} eq $arc->{minx})&&
             ($line->{minx}<$arc->{maxx}  || $line->{minx} eq $arc->{maxx})&&
@@ -1140,30 +940,19 @@ sub getSegSegIntersects {
 
             if (abs(($rot_line_p2->[0]-$rot_line_p1->[0]))>0.000001) { # had this at > 0.1, but that seems weak. make it smaller and see if it's a problem
                 my $rot_line_slope=($rot_line_p2->[1]-$rot_line_p1->[1])/($rot_line_p2->[0]-$rot_line_p1->[0]);
-
-                #print "phi : $arc->{phi_radians}\nsin(phi)/cos(phi):",sin($arc->{phi_radians}),"/",cos($arc->{phi_radians}),"\n";
-                #print "rot line: [$rot_line_p1->[0],$rot_line_p1->[1]],[$rot_line_p2->[0],$rot_line_p2->[1]]\n";
-
                 my $a = (($rot_line_slope)**2/$arc->{ry}**2) + 1/$arc->{rx}**2;
                 my $b = ( 2 * ($rot_line_slope) * ($rot_line_p1->[1] - ($rot_line_slope)*$rot_line_p1->[0]))/$arc->{ry}**2;
                 my $c =(($rot_line_p1->[1] - ($rot_line_slope)*$rot_line_p1->[0])**2 / $arc->{ry}**2 ) - 1;
-                #print "quad coeffs: $a, $b, $c\n";
                 my @xs = &quadraticformula($a,$b,$c,1);
-                #print "solution(s) from quad form:",join(",",@xs),"\n";
                 for (my $i=0;$i<@xs;$i++) {
                     my $y=$rot_line_slope * $xs[$i] + ($rot_line_p1->[1] - $rot_line_slope * $rot_line_p1->[0]); #line formula
                     push(@intersections,[$xs[$i],$y]);
                     }
                 }
-            else {#vertical line - use ellipse formula to get points
-                #print "VERT (min/max x: $line->{minx},$line->{maxx}) line [$line->{p1}->[0],$line->{p1}->[1] , $line->{p2}->[0],$line->{p2}->[1]] doin ok\n";
+            else { #vertical line - use ellipse formula to get points
                 my $y=sqrt($arc->{ry}**2 * (1 - ($x1**2)/($arc->{rx}**2)));#vertical line. use ellipse formula to get the +/- y vals
                 push(@intersections,[$x1,$y],[$x1,-$y]);
-                #print "   ints even: [ $x1 , +/- $y]\n";
                 }
-            #for (my $i=0;$i<@intersections;$i++) {
-            #    print "centered, unrotated intersection $i: [$intersections[$i]->[0],$intersections[$i]->[1]]\n";
-            #    }
             for (my $i=0;$i<@intersections;$i++) {
                 # there was an interesting point of failure here due to floating point error in addition
                 # when adding cx back to intersection's x, sometimes the result would get an extra 0.000000000000001 (or so),
@@ -1177,51 +966,19 @@ sub getSegSegIntersects {
                 $intersections[$i] = _rotate2d([0,0],$intersections[$i],$arc->{phi_radians});
                 my $sigcnt1=length(($arc->{cx}             =~/\.([0-9]*)/g)[0]) + length(($arc->{cx}             =~/([0-9]*)[0-9]\./g)[0]);
                 my $sigcnt2=length(($intersections[$i]->[0]=~/\.([0-9]*)/g)[0]) + length(($intersections[$i]->[0]=~/([0-9]*)[0-9]\./g)[0]);
-                #print "add thing: $intersections[$i]->[0]+=$arc->{cx} = ";
                 $intersections[$i]->[0]+=$arc->{cx};
-                #print "$intersections[$i]->[0]  then  ";
                 my $sigcnt3=length(($intersections[$i]->[0]=~/\.([0-9]*)/g)[0]);
                 $intersections[$i]->[0]=0 + sprintf("%.".(sort {$b<=>$a} ($sigcnt1,$sigcnt2))[0]."f",$intersections[$i]->[0]);
-                #print "$intersections[$i]->[0]\n";
                 $intersections[$i]->[1]+=$arc->{cy};
                 }
 
             #Now check to see of those intersections are within bounds and within sweep
 
-#if ( 0 &&   #degug thing
-#    ! grep {
-#                    ($_->[0] < $line->{maxx} || abs($_->[0] - $line->{maxx}) < $line->{precision}) &&
-#                    ($_->[0] > $line->{minx} || abs($_->[0] - $line->{minx}) < $line->{precision}) &&
-#                    ($_->[1] < $line->{maxy} || abs($_->[1] - $line->{maxy}) < $line->{precision}) &&
-#                    ($_->[1] > $line->{miny} || abs($_->[1] - $line->{miny}) < $line->{precision})
-#
-#                } @intersections
-#    ) {
-#    map {
-#    print "            ($_->[0] < $line->{maxx} || abs($_->[0] - $line->{maxx}) < $line->{precision}) && \n";
-#    print "            ($_->[0] > $line->{minx} || abs($_->[0] - $line->{minx}) < $line->{precision}) && \n";
-#    print "            ($_->[1] < $line->{maxy} || abs($_->[1] - $line->{maxy}) < $line->{precision}) && \n";
-#    print "            ($_->[1] > $line->{miny} || abs($_->[1] - $line->{miny}) < $line->{precision})\n";
-#     } @intersections;
-#
-#    }
                 @intersections = grep {
-                #$_->[0] <= $line->{maxx} + $line->{precision} &&
-                #$_->[0] >= $line->{minx} - $line->{precision} &&
-                #$_->[1] <= $line->{maxy} + $line->{precision} &&
-                #$_->[1] >= $line->{miny} - $line->{precision}
-
-                #($_->[0] < $line->{maxx} || $_->[0] eq $line->{maxx}) &&
-                #($_->[0] > $line->{minx} || $_->[0] eq $line->{minx}) &&
-                #($_->[1] < $line->{maxy} || $_->[1] eq $line->{maxy}) &&
-                #($_->[1] > $line->{miny} || $_->[1] eq $line->{miny})
-
                 ($_->[0] < $line->{maxx} || abs($_->[0] - $line->{maxx}) < $line->{precision}) &&
                 ($_->[0] > $line->{minx} || abs($_->[0] - $line->{minx}) < $line->{precision}) &&
                 ($_->[1] < $line->{maxy} || abs($_->[1] - $line->{maxy}) < $line->{precision}) &&
                 ($_->[1] > $line->{miny} || abs($_->[1] - $line->{miny}) < $line->{precision})
-
-
                 } @intersections;
 
             my $leg1;
@@ -1258,11 +1015,9 @@ sub getSegSegIntersects {
                         }
                     else {
                         my @allArcThetas=$arc->solveXforTheta($int->[0]);
-                        #warn "CIR--LINE allarcthetas: ",join(',',@allArcThetas),"\n";
                         foreach my $t (@allArcThetas) {
                             my $tp=$arc->point($t);
                             if (abs($tp->[1] - $int->[1]) < 0.0000000001) {push(@ret,$t);}
-                            #man.
                             }
                         }
                     }
@@ -1270,9 +1025,6 @@ sub getSegSegIntersects {
             else {
                 push(@ret,@intersections);
                 }
-            #print "got ",scalar(@intersections)," line-arc intersections\n";
-            #print "  it/they is/are: \n  ",join("\n  ",map {"[$_->[0],$_->[1]]"} @intersections),"\n";
-
             }
         }
     # circle-circle special (but common) case
@@ -1316,8 +1068,6 @@ sub getSegSegIntersects {
         # now, see if those are within arc sweep
         # hopefully just copy paste from arc-line code...
 
-        #warn "  circ--circ pre filter\n  ",join("\n  ",map {"[$_->[0],$_->[1]]"} @intersections),"\n";
-
         if (scalar(@intersections) > 0) {
             my $leg1;
             my $leg2;
@@ -1348,8 +1098,6 @@ sub getSegSegIntersects {
                  || (!$arc1->{large_arc_flag} &&  $arc1->isWithinSweep($_,$leg1,$leg2))
                 } @intersections;
 
-            #warn "  circ--circ post arc1 filter\n  ",join("\n  ",map {"[$_->[0],$_->[1]]"} @intersections),"\n";
-
             # now for other arc
             if ($arc2->{large_arc_flag}==0) {
                 if ($arc2->{sweep_flag} == 0) {
@@ -1376,28 +1124,19 @@ sub getSegSegIntersects {
                  || (!$arc2->{large_arc_flag} &&  $arc2->isWithinSweep($_,$leg1,$leg2))
                 } @intersections;
 
-
-            #warn "got ",scalar(@intersections)," circle_arc-circle_arc intersections\n";
-            #warn "  it/they is/are: \n  ",join("\n  ",map {"[$_->[0],$_->[1]]"} @intersections),"\n";
-
             if ($wantThetas) {
                 foreach my $int (@intersections) {
                     my @allArcThetas=$arc1->solveXforTheta($int->[0]);
-                    #warn "CIR--CIR allarcthetas: ",join(',',@allArcThetas),"\n";
                     foreach my $t (@allArcThetas) {
                         my $tp=$arc1->point($t);
                         if (abs($tp->[1] - $int->[1]) < 0.0000000001) {push(@ret,$t);}
-                        #man. # why man? were you complaining about doing a tolerance thing here? whatever man!
                         }
                     }
                 }
             else {
                 push(@ret,@intersections);
                 }
-            #print "got ",scalar(@intersections)," circle_arc-circle_arc intersections\n";
-            #print "  it/they is/are: \n  ",join("\n  ",map {"[$_->[0],$_->[1]]"} @intersections),"\n";
             }
-
         }
 
     # general ellipse-ellipse case
@@ -1408,11 +1147,11 @@ sub getSegSegIntersects {
         die "elliptical arc--elliptical arc intersection not handled yet (when both aren't circular arcs)";
         }
 
-    # yeah bez--bez isn't here! you thought you had it but you don't
-    # but now you might be able to figure it, based on breaking bezs down to y(t(x)) sub functions
-    # -- you'd solve intersection of those. Gotta work all that up though to see if that works.
-    # You'll also be in position to do offset bez and offset intersections then, I think.
-    # But need serious work sessions for that. Better space. More peace, for longer.
+    # CubicBezier-CubicBezier intersection is now worked out in
+    # MPath::BezierCubicSegment.pm
+    # Figure out whether to bring that in here, or call that from here.
+    # Might be that you want to break all species of seg-seg intersections
+    # out into a seperate module.
 
     return @ret;
     }
@@ -1422,16 +1161,15 @@ sub getSegSegIntersects {
 our $BigFloatOneHalf = Math::BigFloat->new('0.5');
 our $BigFloatTen     = Math::BigFloat->new('10');
 sub bigsqrt {
-    #because the sqrt and root functions in Math::BigFloat sometimes fail
-    #Wikipedia reminds us that:
-    #sqrt(x) = 10**(1/2 * log_10(x))
+    # because the sqrt and root functions in Math::BigFloat sometimes fail
+    # Wikipedia reminds us that:
+    # sqrt(x) = 10**(1/2 * log_10(x))
     # doing similar thing in QuadraticFormula.pm. see comments there
     return $BigFloatTen->copy()->bpow($BigFloatOneHalf->copy()->bmul($_[0]->copy()->blog(10)),25);
     }
 
 sub dimensionalStepFromTheta {
     my $self=shift;
-    #print " in dimstep ref:",ref($self),"\n";
 
     my $dim=shift;
     my $theta=shift;
@@ -1439,17 +1177,13 @@ sub dimensionalStepFromTheta {
 
     my $findnexttheta = sub {
         my $ret;
-        #print " in sub dimstep ref:",ref($self),"\n";
         my $pt_last = $self->point($theta);
         if (!ref($_[0])) {
             my $pt_new  = $self->point($_[0]);
             $ret = $dim - CORE::sqrt(($pt_new->[0] - $pt_last->[0])**2 + ($pt_new->[1] - $pt_last->[1])**2);
-            #warn "$ret = $dim - CORE::sqrt(($pt_new->[0] - $pt_last->[0])**2 + ($pt_new->[1] - $pt_last->[1])**2) = $ret\n";
             }
         else {
-            #warn "I don't think you want to be here - not sure if this mess is debugged.\n";
             my $pt_new  = $self->point($_[0]);
-            #print "using BigFloat - \n";
             my $dx=(ref($pt_new->[0]))?$pt_new->[0]->copy()->bsub($pt_last->[0]):$pt_new->[0] - $pt_last->[0];
             my $dxsqrd=(ref($dx))?$dx->bpow(2):$dx**2;
             my $dy=(ref($pt_new->[1]))?$pt_new->[1]->copy()->bsub($pt_last->[1]):$pt_new->[1] - $pt_last->[1];
@@ -1464,7 +1198,6 @@ sub dimensionalStepFromTheta {
     my $newtheta;
     my $er;
     ($newtheta,$er) = FalsePosition($findnexttheta,($direction ? [$theta,1]:[0,$theta]),$self->{resolution}/10,($direction ? ($theta + (1-$theta)/2):($theta/2)),'dimensionalStepFromTheta');
-    #warn " dim step result ($newtheta,$er)\n";
     if (defined($er)) {
         warn "dimstep er: $er";
         #probably just reached the end
@@ -1475,70 +1208,6 @@ sub dimensionalStepFromTheta {
         }
     return ($self->point($newtheta),$newtheta);
     }
-sub getInfiniteSlopeThetas {
-    my $self=shift;
-    my $bounds=shift;
-    if (!defined($bounds)) {$bounds=[0,1];}
-    my @infthetas;
-    my ($seg,$segtheta,$segind);
-    ($seg,$segtheta,$segind)=$self->getSegThetaIndexAtPathTheta($bounds->[0]);
-    for (my $i=$segind;$i<scalar(@{$self->{pathSegments}});$i++) {
-        if ($self->{pathThetaToCompThetaRanges}->[$segind]->[1] > $bounds->[1]) {last;}
-        push(@infthetas,$self->{pathSegments}->[$segind]->getInfiniteSlopeThetas());
-        }
-    @infthetas = grep {($_ > $bounds->[0] || $_ eq $bounds->[0]) && ($_ < $bounds->[1] || $_ eq $bounds->[1])} @infthetas;
-    return @infthetas;
-    }
-
-sub getKeyPointsOnLine { ### Not quite right yet, but maybe usable
-    my $self=shift;
-    my @ret=();
-    push(@ret,
-        [$self->{pathSegments}->[0]->{maxx},$self->{pathSegments}->[0]->f($self->{pathSegments}->[0]->{maxx}),ref($self->{pathSegments}->[0])=~/bezier/i?$self->{pathSegments}->[0]->solveXforTheta($self->{pathSegments}->[0]->{maxx}):$self->{pathSegments}->[0]->{maxx}],
-        [$self->{pathSegments}->[0]->{minx},$self->{pathSegments}->[0]->f($self->{pathSegments}->[0]->{minx}),ref($self->{pathSegments}->[0])=~/bezier/i?$self->{pathSegments}->[0]->solveXforTheta($self->{pathSegments}->[0]->{minx}):$self->{pathSegments}->[0]->{minx}],
-        (map {[$_,$self->{pathSegments}->[0]->{maxy},ref($self->{pathSegments}->[0])=~/bezier/i?$self->{pathSegments}->[0]->solveYforTheta($_):$_] }   $self->{pathSegments}->[0]->F($self->{pathSegments}->[0]->{maxy})),
-        (map {[$_,$self->{pathSegments}->[0]->{miny},ref($self->{pathSegments}->[0])=~/bezier/i?$self->{pathSegments}->[0]->solveYforTheta($_):$_] }   $self->{pathSegments}->[0]->F($self->{pathSegments}->[0]->{miny})),
-        [$self->{pathSegments}->[0]->{p1}->[0],$self->{pathSegments}->[0]->{p1}->[1],ref($self->{pathSegments}->[0])=~/bezier/i?$self->{pathSegments}->[0]->solveXforTheta($self->{pathSegments}->[0]->{p1}->[0]):$self->{pathSegments}->[0]->{p1}->[0]]
-        );
-    if (ref($self->{pathSegments}->[0])=~/bezier/i) {print "sorting bezier points by thetas1\n";@ret = sort {$a->[2]<=>$b->[2]} @ret;}
-    elsif (ref($self->{pathSegments}->[0])=~/line/i) {
-        if ($self->{pathSegments}->[0]->[0]<$self->{pathSegments}->[0]->{p2}->[0]) {@ret = sort {$a->[0]<=>$b->[0]} @ret;}
-        else {@ret = sort {$b->[0]<=>$a->[0]} @ret;}
-        }
-#    print "first sort numbers : " , join(",",map {$_->[2]} @ret),"\n";
-    @ret = map {[$_->[0],$_->[1]]} @ret;
-
-    push(@ret,[111,111]);#testing
-
-    for (my $i=1;$i<scalar(@{$self->{pathSegments}});$i++) {
-        # so far, assumes all segments have ->{p1} and ->{p2} start and end points
-        my @thisgroup=(
-            [$self->{pathSegments}->[$i]->{maxx},$self->{pathSegments}->[$i]->f($self->{pathSegments}->[$i]->{maxx}), ref($self->{pathSegments}->[$i])=~/bezier/i?$self->{pathSegments}->[$i]->solveXforTheta($self->{pathSegments}->[$i]->{maxx}):$self->{pathSegments}->[$i]->{maxx}],
-            [$self->{pathSegments}->[$i]->{minx},$self->{pathSegments}->[$i]->f($self->{pathSegments}->[$i]->{minx}), ref($self->{pathSegments}->[$i])=~/bezier/i?$self->{pathSegments}->[$i]->solveXforTheta($self->{pathSegments}->[$i]->{minx}):$self->{pathSegments}->[$i]->{minx}],
-            (map {[$_,$self->{pathSegments}->[$i]->{maxy}, ref($self->{pathSegments}->[$i])=~/bezier/i?$self->{pathSegments}->[$i]->solveYforTheta($_):$_]}   $self->{pathSegments}->[$i]->F($self->{pathSegments}->[$i]->{maxy})),
-            (map {[$_,$self->{pathSegments}->[$i]->{miny}, ref($self->{pathSegments}->[$i])=~/bezier/i?$self->{pathSegments}->[$i]->solveYforTheta($_):$_]}   $self->{pathSegments}->[$i]->F($self->{pathSegments}->[$i]->{miny})),
-            [$self->{pathSegments}->[$i-1]->{p2}->[0],$self->{pathSegments}->[$i-1]->{p2}->[1], ref($self->{pathSegments}->[$i-1])=~/bezier/i?$self->{pathSegments}->[$i-1]->solveXforTheta($self->{pathSegments}->[$i-1]->{p2}->[0]):$self->{pathSegments}->[$i-1]->{p2}->[0]],
-            [$self->{pathSegments}->[$i]->{p1}->[0],  $self->{pathSegments}->[$i]->{p1}->[1],   ref($self->{pathSegments}->[$i])=~/bezier/i?$self->{pathSegments}->[$i]->solveXforTheta($self->{pathSegments}->[$i]->{p2}->[0]):$self->{pathSegments}->[$i]->{p2}->[0]]);
-        my %dupsieve={};
-        @thisgroup = grep {!$dupsieve{$_->[0].','.$_->[1]}++} @thisgroup;
-        if (ref($self->{pathSegments}->[$i])=~/bezier/i) {
-#            print "sorting bezier points by thetas2\n";
-            @thisgroup = sort {$a->[2]<=>$b->[2]} @thisgroup;
-#            print "in loop sort numbers $i: " , join(",",map {$_->[2]} @thisgroup),"\n";
-            }
-        elsif (ref($self->{pathSegments}->[$i])=~/line/i) {
-            if ($self->{pathSegments}->[$i]->[0]<$self->{pathSegments}->[$i]->{p2}->[0]) {@thisgroup = sort {$a->[0]<=>$b->[0]} @thisgroup;}
-            else {@thisgroup = sort {$b->[0]<=>$a->[0]} @thisgroup;}
-            }
-        push(@ret,map {[$_->[0],$_->[1]]} @thisgroup);
-        push(@ret,[222,222]);#testing
-        }
-    push(@ret,$self->{pathSegments}->[scalar(@{$self->{pathSegments}})-1]->{p2});
-    my %dupsieve={};
-    @ret = grep {!$dupsieve{$_->[0].','.$_->[1]}++} @ret;
-    return @ret;
-    }
-
 
 sub _rotate2d {
     my ($origin,$point,$angle) = @_;

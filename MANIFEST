@@ -3,11 +3,15 @@ CHANGES
 
 lib/Math/MPath.pm
 lib/Math/MPath/BezierCubicSegment.pm
+lib/Math/MPath/BezierQuadraticSegment.pm
+lib/Math/MPath/EllipticalArc.pm
+lib/Math/MPath/LineSegment.pm
 lib/Math/MPath/CubicFormula.pm
 lib/Math/MPath/QuadraticFormula.pm
 lib/Math/MPath/Function/Root.pm
 
-LICENSE
+lib/Math/MPath/eqs.txt			TODO:document elsewhere and remove file
+
 MANIFEST			This list of files
 META.json
 META.yml
@@ -17,7 +21,8 @@ t/00-compile.t
 t/01-basics.t
 t/02-BezierCubicSegment.t
 t/03-BezierCubicSegment_vis.t
+t/03-BezierCubicSegment_vis.t.svg
 t/04-BezierCubicSegment_offset_vis.t
+t/04-BezierCubicSegment_offset_vis.t.svg
 t/05-BezierCubicSegment_intersect.t
 t/06-BezierCubicSegment_offset_intersect.t
-
