@@ -26,7 +26,6 @@ sub new {
     $self->{precision} = shift;
     $self->{isLite} = @_ ? shift:0;
     $self->{maxdiaglength} = (reverse sort {$a<=>$b} map {sqrt(($_->[3] - $_->[2])**2 + ($_->[1] - $_->[0])**2)} ([@{$self->{p1}},@{$self->{cp2}}],[@{$self->{cp1}},@{$self->{p2}}]))[0];
-    #$self->{thetaprecision} = $self->{precision}/$self->{maxdiaglength};
     $self->{A}  = $self->{p2}->[0] - 3.0 * $self->{cp2}->[0] + 3.0 * $self->{cp1}->[0] -       $self->{p1}->[0];
     $self->{B}  =                    3.0 * $self->{cp2}->[0] - 6.0 * $self->{cp1}->[0] + 3.0 * $self->{p1}->[0];
     $self->{C}  =                                              3.0 * $self->{cp1}->[0] - 3.0 * $self->{p1}->[0];
@@ -120,7 +119,7 @@ sub new {
     $self->{cubsqrtofnegQ_ofy} = sqrt(($self->{cubQ_ofy} < 0 ? -1:1) * $self->{cubQ_ofy}); # only used in cubD < 0 case, where cubQ is always < 0
 
 
-    # These subs seem to be working!
+    # These subs seem to be working
     my $theta = sub { # acos( R / sqrt( -(Q^3) ) )
                      my $toAcos =
                       # R
@@ -301,23 +300,6 @@ my $y=$_[0];
     my $preS_ofy = sub {return $R_ofy->($_[0])+$sqrtD_ofy->($_[0])};
     my $preT_ofy = sub {return $R_ofy->($_[0])-$sqrtD_ofy->($_[0])};
 
-
-#################33
-###  IN ALL THE $eqn_n, I'M JUST NOW ADDING THE my $x=$_[0] - $self->{minx};
-
-######  had a non-existant term in D(x) (really in the C(x) portion)
-######  it was $self->{DdA}, which is not one of the precalculated terms I have.
-######  Fixed that everywhere, so maybe I can undo that "... - $self->{minx}" "fix".
-
-###  THOUGHT ALL THESE WOULD WORK WITH JUST THE X VAL PASSED IN $_[0],
-###  BUT STARTING TO TEST AND THE FIRST PATH I TRIED THAT HAD ITS MIN X NOT ZERO WAS MAKING EQN_7 GIVE RESULTS THAT WERE OFF - SHIFTED UP A BIT
-###  FIGURED OUT THAT ADJUSTING THE X ARG DOWN BY MINX BROUGHT IT'S THETA RESULTS TO THE CORRECT 0 TO 1 RANGE (WITH NORMAL TINY ERROR)
-###  SO NOW SUBTRACTING THAT MINX FROM ALL X ARGS FOR ALL EQNS ___THOUGH I DON'T KNOW IT THAT'S CORRECT IN GENERAL______
-
-### DO I NEED TO DO THE SAME FOR THE DERIVATIVES?????? PROBBLYYYYYYYYYYYY !!!!!!!!!!!!!!!!!!!! ###
-
-
-
     my $eqn_1 = sub {return -($self->{BdA}/3) + (  (( ($R->($_[0])+$sqrtD->($_[0])))**(1/3)) + ( ( ($R->($_[0])-$sqrtD->($_[0])))**(1/3)) );};
     my $eqn_2 = sub {return -($self->{BdA}/3) + (  (( ($R->($_[0])+$sqrtD->($_[0])))**(1/3)) + (-(-($R->($_[0])-$sqrtD->($_[0])))**(1/3)) );}; # yes 2 and 4 are the same
     my $eqn_3 = sub {return -($self->{BdA}/3) + ( -((-($R->($_[0])+$sqrtD->($_[0])))**(1/3)) + (-(-($R->($_[0])-$sqrtD->($_[0])))**(1/3)) );};
@@ -331,7 +313,7 @@ my $y=$_[0];
     #my $eqn_8 = sub {return one of above + ($self->{BdA}/3) then /2, then negated, then minus - ($self->{BdA}/3) } # the D eq 0 duplicate real root
 
     my $eqn_1to4_prime  = sub {
-        my $x=$_[0] - $self->{minx}*0;
+        my $x=$_[0];
         my $preS = $preS->($x);
         my $preT = $preT->($x);
         my $thissqrtD = $sqrtD->($x);
@@ -345,7 +327,7 @@ my $y=$_[0];
     };
 
     my $eqn_1to4_2prime = sub {
-        my $x=$_[0] - $self->{minx}*0;
+        my $x=$_[0];
         my $preS = $preS->($x);
         my $preT = $preT->($x);
         my $sqrtD = $sqrtD->($x);
@@ -381,7 +363,7 @@ my $y=$_[0];
         my $sqrtD = $sqrtD_ofy->($_[0]);
         my $R = $R_ofy->($_[0]);
         return
-          (1/(12.0 * $D->($_[0])    *$self->{E}**2))
+          (1/(12.0 * $D_ofy->($_[0]) * $self->{E}**2))
         * (  ($preS/(($preS**2)**(1/3)))
            * ( (1/3) - $R/($sqrtD) )
            +
@@ -809,6 +791,13 @@ my $y=$_[0];
         }
     }
 
+
+    # TODO: if you have BigFloats at this point in @interval_xs
+    #       (probably because some @all_ts were BigFloats)
+    #       then lots of the following is probably buggy?
+    #       Was getting partly wrong results when I had some BigFloats get in there.
+    #       Could be that nexttoward() doesn't work on BigFloats?
+
     @interval_xs = sort {$a<=>$b} @interval_xs;
         
 
@@ -955,7 +944,6 @@ my $y=$_[0];
     for (my $i=0; $i < @x_intervals; $i++) {
         my $xa = $x_intervals[$i]->[0];
         my $xb = $x_intervals[$i]->[1];
-        #my @this_interval_xs = [$xa,$xb];
 
         my $xmid = ($xa + $xb) / 2.0;
         my $tmid = ($t_intervals[$i]->[0] + $x_intervals[$i]->[1]) / 2.0;
@@ -1006,11 +994,11 @@ my $y=$_[0];
                 }
             }
         }
+        else {die "Dmid_ofy not < 0 and Dmid_ofy not >= 0 ???"}
 
         # now set up the lut entries that were originally more x oriented
         # and stuff those y eqs in ther now
         if ($Dmid > 0 || $Dmid eq 0) {
-
             if ($Dmid eq 0) {
                 die "D == 0 not handled yet";
             }
@@ -1050,10 +1038,9 @@ my $y=$_[0];
                 }
             }
         }
+        else {die "Dmid not < 0 and Dmid not >= 0 ???"}
 
     }
-
-
 
     # make eqn LUT
     my @XtoTLUT;
@@ -1378,12 +1365,9 @@ sub Y_offset{
 }
 
 sub point_offset {
-    my $self = shift;
-    my $t = shift;
-    my $distance = shift;
+    my ($self, $t, $distance) = @_;
     my $x = $self->bezierEvalXofT($t);
     my $y = $self->bezierEvalYofT($t);
-
     # only want the first lut entry we get matching on t span. (Usually there's only one, but there could be two if $t is right on a t span boundary.)
     #warn "grep ts\n";
     my @tspans = grep {
@@ -1395,7 +1379,6 @@ sub point_offset {
         #warn " 4: ",($t eq $high_t),"\n";
         ($t > $low_t || $t eq $low_t) && ($t < $high_t || $t eq $high_t)
         } @{$self->{XtoTLUT}} ;
-
     my $tspan = $tspans[0];
     my $t_prime = $tspan->[0]->[1]->($x);
     my $reversed = $tspan->[3];

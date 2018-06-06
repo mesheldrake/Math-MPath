@@ -43,8 +43,14 @@ sub new {
     return $self;
     }
 sub newlite {
-    my $self = new(@_);
+    my $class = shift;
+    my $self={};
+    bless $self,$class;
+    $self->{pathspec} = shift;
+    $self->{resolution} = shift;
+    $self->{precision} = @_?shift:$self->{resolution}/1000;
     $self->{isLite} = 1;
+    $self->constructSegments($self->{pathspec});
     return $self;
     }
 sub constructSegments {
@@ -384,6 +390,13 @@ sub point {
     @seg=$self->getSegThetaIndexAtPathTheta($theta);
     return $seg[0]->point($seg[1]);
     }
+sub point_offset {
+    my ($self, $t, $distance) = @_;
+    my @seg;
+    if (!defined($self->{pathThetaToCompThetaRanges})) {$self->parameterize();} #delay this until you need it
+    @seg=$self->getSegThetaIndexAtPathTheta($t);
+    return $seg[0]->point_offset($seg[1], $distance);
+    }
 sub getSegThetaIndexAtPathTheta {
     # how do you map segment's non-uniform theta spacing to your path-wide pseudo-theta indexing?
     # here I'm tring to find the segments native theta that correspondes to a given fraction of it's length
@@ -699,6 +712,8 @@ sub extractPointsFromPathSpec {
     my $segspec = shift;
     my @ret;
     my $segTypeLetter = substr($segspec,0,1);
+    $segspec=~s/$segTypeLetter\s*/$segTypeLetter/;
+    $segspec=~s/\s*$//;
     if    ($segTypeLetter eq 'M') {push @ret , [split(/[ ,]+/,substr($segspec,1))]}
     elsif ($segTypeLetter eq 'L') {push @ret , [split(/[ ,]+/,substr($segspec,1))]}
     elsif ($segTypeLetter eq 'H') {push @ret , [split(/[ ,]+/,substr($segspec,1))]}
