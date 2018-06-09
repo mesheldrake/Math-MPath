@@ -258,7 +258,6 @@ sub point_offset {
 	my ($x,$y) = @{$self->point($t)};
     $x += -($self->{dy}/$self->{length}) * $distance;
     $y +=  ($self->{dx}/$self->{length}) * $distance;
-    warn "[$x,$y]\n";
     return [$x,$y];
 }
 
