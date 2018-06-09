@@ -621,6 +621,15 @@ sub point {
 
 	}
 
+sub point_offset() {
+    my ($self, $t, $distance) = @_;
+    my ($x, $y) = @{$self->point($t)};
+    my $a = $self->angleNormal_byTheta($t);
+    $x += cos($a) * $distance;
+    $y += sin($a) * $distance;
+    return [$x,$y];
+}
+
 # SPEED ATTEMPTS - IN THE SEVERAL SUBS BELOW, WHEREVER YOU SEE (0 + SOMETHING)
 #                  IT USED TO BE eval(SOMETHING), BUT WE'RE GETTING RID OF eval()s
 #                  IS THE 0 + USEFUL? NEEDED? PROBABLY NOT, BUT WE'RE NOT GOING TO
@@ -1034,7 +1043,7 @@ sub secondDerivative {
     }
 sub slopeTangent {my @ats;@ats=$_[0]->angleTangent($_[1],$_[2],$_[3]);my @ret;for (my $i=0;$i<@ats;$i++) {push(@ret, sin($ats[$i])/cos($ats[$i]))} return wantarray ? @ret : $ret[0];}
 sub slopeNormal  {my @ats;@ats=$_[0]->angleTangent($_[1],$_[2],$_[3]);my @ret;for (my $i=0;$i<@ats;$i++) {push(@ret, cos($ats[$i])/sin($ats[$i]))} return wantarray ? @ret : $ret[0];}
-sub angleNormal  {my @ret = (map {$_ - $pi/2} $_[0]->angleTangent($_[1],$_[2],$_[3]));@ret = map {angle_reduce($_)} @ret;return wantarray ? @ret : $ret[0];}
+sub angleNormal  {my @ret = (map {$_ + $pi/2} $_[0]->angleTangent($_[1],$_[2],$_[3]));@ret = map {angle_reduce($_)} @ret;return wantarray ? @ret : $ret[0];}
 
 
 sub isWithinSweep {
