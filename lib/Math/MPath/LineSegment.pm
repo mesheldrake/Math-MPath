@@ -237,31 +237,31 @@ sub point {
 		if (!ref($theta)) { # if theta is not a reference to a BigFloat, just do the normal simple math with normal numbers
 			$x=($self->{dx} * $theta) + $self->{p1}->[0];
 			$y=($self->{dy} * $theta) + $self->{p1}->[1];
-#			print "old[$x,$y]\n";
 			}
 		else {
             if (!defined $self->{length_big}) {$self->{length_big} = new Math::BigFloat ''.$self->{length};}
 			my $partdist=$self->{length_big}->copy()->bmul($theta);
 			$x=$partdist->copy()->bmul(CORE::cos($self->{angleTangent}));
 			$y=$partdist->copy()->bmul(CORE::sin($self->{angleTangent}));
-			#print "lpa: $x + $self->{p1}->[0] = ";
 			$x->badd($self->{p1}->[0]);
-			#print "$x\n";
 			$y->badd($self->{p1}->[1]);
 			if (!ref($theta)) {
-# SPEED ATTEMPTS
-#				if (ref($x)) {$x=eval(substr($x->bstr(),0,18));}
-#				if (ref($y)) {$y=eval(substr($y->bstr(),0,18));}
 				if (ref($x)) {$x=0 + sprintf("%.20f",$x->bstr());}
 				if (ref($y)) {$y=0 + sprintf("%.20f",$y->bstr());}
 				}
-			#print "new[$x,$y]\n";
 			}
 		}
-
-	#print "POINT FROM LINE: ($x,$y)   [$self->{p1}->[0],$self->{p1}->[1]],[$self->{p2}->[0],$self->{p2}->[1]]\n";
 	return [$x,$y];
 	}
+sub point_offset {
+	my ($self, $t, $distance) = @_;
+	my ($x,$y) = @{$self->point($t)};
+    $x += -($self->{dy}/$self->{length}) * $distance;
+    $y +=  ($self->{dx}/$self->{length}) * $distance;
+    warn "[$x,$y]\n";
+    return [$x,$y];
+}
+
 sub secondDerivative {return 0;}
 sub slopeTangent {return $_[0]->{slopeTangent};}
 sub slopeTangent_byTheta {return $_[0]->{slopeTangent};}
