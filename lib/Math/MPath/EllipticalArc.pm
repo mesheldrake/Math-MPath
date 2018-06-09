@@ -896,7 +896,7 @@ sub secondDerivative {
     die "Need to work out second derivative with respect to x for elliptical arc when rx != ry";
 }
 sub slopeTangent {my @ats;@ats=$_[0]->angleTangent($_[1],$_[2],$_[3]);my @ret;for (my $i=0;$i<@ats;$i++) {push(@ret, sin($ats[$i])/cos($ats[$i]))} return wantarray ? @ret : $ret[0];}
-sub slopeNormal  {my @ats;@ats=$_[0]->angleTangent($_[1],$_[2],$_[3]);my @ret;for (my $i=0;$i<@ats;$i++) {push(@ret, cos($ats[$i])/sin($ats[$i]))} return wantarray ? @ret : $ret[0];}
+sub slopeNormal  {my @ats;@ats=$_[0]->angleTangent($_[1],$_[2],$_[3]);my @ret;for (my $i=0;$i<@ats;$i++) {push(@ret, -cos($ats[$i])/sin($ats[$i]))} return wantarray ? @ret : $ret[0];}
 sub angleNormal  {my @ret = (map {$_ + $pi/2} $_[0]->angleTangent($_[1],$_[2],$_[3]));@ret = map {angle_reduce($_)} @ret;return wantarray ? @ret : $ret[0];}
 
 sub isWithinSweep {
