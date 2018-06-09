@@ -26,4 +26,5 @@ t/04-BezierCubicSegment_offset_vis.t
 t/04-BezierCubicSegment_offset_vis.t.svg
 t/05-BezierCubicSegment_intersect.t
 t/06-BezierCubicSegment_offset_intersect.t
-t/07-path_offset.t
+t/07-path_offset_vis.t
+t/07-path_offset_vis.t.svg
