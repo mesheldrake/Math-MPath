@@ -568,8 +568,8 @@ my $y=$_[0];
 
 
     # This is ultimately to find ts where D(x(t)) crosses 0 (not just touches, but crosses)
-    my $x_d0_1 = 2.0*$self->{A}*sqrt(-( (3.0*$self->{CdA} - $self->{BdA}**2)/9.0 )**3) - $self->{A}*($self->{BdA}*$self->{CdA})/(3.0) + $self->{A}*(2.0*$self->{BdA}**3)/(27.0) + $self->{D};
-    my $x_d0_2 = -2.0*$self->{A}*sqrt(-( (3.0*$self->{CdA} - $self->{BdA}**2)/9.0 )**3) - $self->{A}*($self->{BdA}*$self->{CdA})/(3.0) + $self->{A}*(2.0*$self->{BdA}**3)/(27.0) + $self->{D};
+    my $x_d0_1 = ($self->{cubQ}>0)? 'nan' :  2.0*$self->{A}*sqrt(-( (3.0*$self->{CdA} - $self->{BdA}**2)/9.0 )**3) - $self->{A}*($self->{BdA}*$self->{CdA})/(3.0) + $self->{A}*(2.0*$self->{BdA}**3)/(27.0) + $self->{D};
+    my $x_d0_2 = ($self->{cubQ}>0)? 'nan' : -2.0*$self->{A}*sqrt(-( (3.0*$self->{CdA} - $self->{BdA}**2)/9.0 )**3) - $self->{A}*($self->{BdA}*$self->{CdA})/(3.0) + $self->{A}*(2.0*$self->{BdA}**3)/(27.0) + $self->{D};
 
     # same for dy/dt == 0 stuff - but not using yet
     #my $y_d0_1 =  2.0*$self->{E}*sqrt(-( (3.0*$self->{GdE} - $self->{FdE}**2)/9.0 )**3) - $self->{E}*($self->{FdE}*$self->{GdE})/(3.0) + $self->{E}*(2.0*$self->{FdE}**3)/(27.0) + $self->{H};
