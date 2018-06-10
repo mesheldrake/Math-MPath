@@ -571,6 +571,13 @@ sub intersect_CC {
 }
 
 
+
+
+################################################################################
+### OFFSET INTERSECTIONS                                                     ###
+################################################################################
+
+
 sub intersect_CoCo {
 
     # The first attempt at adapting bez_bez_intersect() for offset beziers

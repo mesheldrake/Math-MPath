@@ -1344,7 +1344,7 @@ sub X_offset{
     my $x = $self->bezierEvalXofT($t);
     my $tp = $tprimefunc->($x);
     my $y_prime_of_x = $tp == Inf ? Inf : $self->{Em3} * $t**2 * $tp  +  $self->{Fm2} * $t * $tp + $self->{G} * $tp;
-    my $a = atan2($y_prime_of_x,1) - $pi/2 * ($reversed?-1:1);
+    my $a = atan2($y_prime_of_x,1) + $pi/2 * ($reversed?-1:1);
     my $retx = $x + $offset * cos($a);
     return $retx;
 }
@@ -1359,7 +1359,7 @@ sub Y_offset{
     my $y = $self->bezierEvalYofT($t);
     my $tp = $tprimefunc->($x);
     my $y_prime_of_x = $tp == Inf ? Inf : $self->{Em3} * $t**2 * $tp  +  $self->{Fm2} * $t * $tp + $self->{G} * $tp;
-    my $a = atan2($y_prime_of_x,1) - $pi/2 * ($reversed?-1:1);
+    my $a = atan2($y_prime_of_x,1) + $pi/2 * ($reversed?-1:1);
     my $rety = $y + $offset * sin($a);
     return $rety;
 }
