@@ -570,11 +570,11 @@ my $y=$_[0];
     # This is ultimately to find ts where D(x(t)) crosses 0 (not just touches, but crosses)
     my $x_d0_1 = 2.0*$self->{A}*sqrt(-( (3.0*$self->{CdA} - $self->{BdA}**2)/9.0 )**3) - $self->{A}*($self->{BdA}*$self->{CdA})/(3.0) + $self->{A}*(2.0*$self->{BdA}**3)/(27.0) + $self->{D};
     my $x_d0_2 = -2.0*$self->{A}*sqrt(-( (3.0*$self->{CdA} - $self->{BdA}**2)/9.0 )**3) - $self->{A}*($self->{BdA}*$self->{CdA})/(3.0) + $self->{A}*(2.0*$self->{BdA}**3)/(27.0) + $self->{D};
-    
+
     # same for dy/dt == 0 stuff - but not using yet
     #my $y_d0_1 =  2.0*$self->{E}*sqrt(-( (3.0*$self->{GdE} - $self->{FdE}**2)/9.0 )**3) - $self->{E}*($self->{FdE}*$self->{GdE})/(3.0) + $self->{E}*(2.0*$self->{FdE}**3)/(27.0) + $self->{H};
     #my $y_d0_2 = -2.0*$self->{E}*sqrt(-( (3.0*$self->{GdE} - $self->{FdE}**2)/9.0 )**3) - $self->{E}*($self->{FdE}*$self->{GdE})/(3.0) + $self->{E}*(2.0*$self->{FdE}**3)/(27.0) + $self->{H};
-    
+
     #warn "x_d0s: $x_d0_1, $x_d0_2\n";
 
     my @more_t;
@@ -591,7 +591,7 @@ my $y=$_[0];
         # to those, that they are heading towards, from you solve XPrime for theta deal.
         #  You don't want to work with that side of the zero crossing though, since you don't know which of the eqns 5-7 to use
         #  to get the one new theta you want. Actually, It's probably eqn 5 or 6. But it's easier to work on the other side where you know there's just one eqn.
-    
+
         # so, adapt the loop below
         # find the first x makes D(x) land on the positive side of zero
         # then get the theta for that, from the one eqn form 1-4 that applies.
@@ -599,8 +599,8 @@ my $y=$_[0];
         # calcing D(x(t)) to get the complete bracket.
         # Remember this is all to make t(x) eqns work - especially t'(x) - to get the D(x) that happens in those
         # to always come out with the correct sign.
-    
-    
+
+
         my $d1 = $D->($x_d0_1);
         my $d2x=nexttoward($x_d0_1,0);
         my $d2 = $D->($d2x);
@@ -628,9 +628,9 @@ my $y=$_[0];
         # then step x so D(x) goes to the first positive result
         while ($D->($x_d0_1) <= 0) {$x_d0_1=nexttoward($x_d0_1,$dirxDpos);}
         warn "ww2\n" if $whilewatch;
-    
+
         # $x_d0_1 is now the first x val that makes D(x) come out positive above zero
-    
+
         # find the t for that x from the one eqn that applies
         my $t1;
         if ($R->($x_d0_1) >= 0) {
@@ -641,7 +641,7 @@ my $y=$_[0];
             if ($self->{cubQ}<=0) { $t1 = $eqn_3->($x_d0_1); }
             else                  { $t1 = $eqn_4->($x_d0_1); }
         }
-    
+
         # that t may not exactly produce the x we derived it from
         # in order to find a good safe t span end, make sure the t we use produces an x that produces a D(x) with correct sign.
         
@@ -658,7 +658,7 @@ my $y=$_[0];
             $dirtDneg = 1;
             $dirtDpos = 0;
         }
-    
+
         # step t so D(x(t)) goes to the first zero or negative result
         while ($D->($self->bezierEvalXofT($t1)) >=  0) {$t1=nexttoward($t1,$dirtDneg);}
         warn "ww3\n" if $whilewatch;
@@ -676,7 +676,7 @@ my $y=$_[0];
         warn "$x_d0_1_Dneg vs1\n",$self->bezierEvalXofT($t1neg),"\n";
         warn "$x_d0_1 vs2\n",$self->bezierEvalXofT($t1),"\n";
         }
-    
+
         push @more_t, [$t1neg,$t1];
         push @more_x, [$self->bezierEvalXofT($t1neg),$self->bezierEvalXofT($t1)];
         #push @more_x, [$x_d0_1_Dneg,$x_d0_1];
@@ -714,7 +714,7 @@ my $y=$_[0];
         warn "ww6\n" if $whilewatch;
 
         # $x_d0_2 is now the first x val that makes D(x) come out positive above zero
-    
+
         # find the t for that x from the one eqn that applies
         my $t1;
         if ($R->($x_d0_2) >= 0) {
@@ -725,7 +725,7 @@ my $y=$_[0];
             if ($self->{cubQ}<=0) { $t1 = $eqn_3->($x_d0_2); }
             else                  { $t1 = $eqn_4->($x_d0_2); }
         }
-    
+
         # that t may not exactly produce the x we derived it from
         # in order to find a good safe t span end, make sure the t we use produces an x that produces a D(x) with correct sign.
         
@@ -742,7 +742,7 @@ my $y=$_[0];
             $dirtDneg = 1;
             $dirtDpos = 0;
         }
-    
+
         # step t so D(x(t)) goes to the first zero or negative result
         while ($D->($self->bezierEvalXofT($t1)) >=  0) {$t1=nexttoward($t1,$dirtDneg);}
         my $t1neg = $t1;
@@ -751,7 +751,7 @@ my $y=$_[0];
         # then step t so D(x(t)) goes to the first positive result
         while ($D->($self->bezierEvalXofT($t1)) <= 0) {$t1=nexttoward($t1,$dirtDpos);}
         warn "ww8\n" if $whilewatch;
-    
+
         # $t1 is now the first t val that makes D(x(t)) come out positive above zero
 
         if (0) {
@@ -765,7 +765,7 @@ my $y=$_[0];
         push @more_t, [$t1neg,$t1];
         push @more_x, [$self->bezierEvalXofT($t1neg),$self->bezierEvalXofT($t1)];
         #push @more_x, [$x_d0_2_Dneg,$x_d0_2];
-    
+
     }
     else {
         #warn "no D(x)==0 [2]\n";
@@ -801,7 +801,7 @@ my $y=$_[0];
     @interval_xs = sort {$a<=>$b} @interval_xs;
         
 
-    
+
     my @t_intervals = ([0,undef]);
     my @x_intervals = ([$self->bezierEvalXofT(0),undef]);
 
@@ -842,7 +842,7 @@ my $y=$_[0];
         $x_intervals[$tind - 1]->[1] = $self->bezierEvalXofT($dir == 1 ? $lastnewt : $newt);
         $x_intervals[$tind]->[0] = $self->bezierEvalXofT($dir == 1 ? $newt : $lastnewt);
 
-    
+
         #warn "new t: $newt\n";
         $all_ts[$tind] = $newt;
     }
@@ -889,7 +889,7 @@ my $y=$_[0];
 
         splice @m0ts, $tind, 1, [$lastnewt,$newt];
         $m0xs[$tind] = [$self->bezierEvalXofT($lastnewt),$self->bezierEvalXofT($newt)];
-    
+
         #warn "new t: $newt\n";
         $all_ts[$tind] = $newt;
     }
@@ -932,7 +932,7 @@ my $y=$_[0];
             $reversed[$ind] = 1;
         }
     }
-    
+
     warn join("\n",map {'xintrvl['.join(',',@{$x_intervals[$_]})."]\n".
                         'tintrvl['.join(',',@{$t_intervals[$_]})."]"
                } (0 .. $#x_intervals)),"\n"
@@ -1396,7 +1396,7 @@ sub point_offset {
 # used in Intersections.pm
 sub t_from_xoff {
     my ($self, $xoff, $offset, $tbounds, $tprimefunc, $reversed) = @_;
-    
+
     my $find_matching_offset_x = sub {
         #warn "findloop\n";
         my $t0 = $_[0];
@@ -1409,7 +1409,7 @@ sub t_from_xoff {
 
         return $xoff - ($x0 + $offset * cos($a0));
     };
-    
+
     $bounds = [$tbounds->[0] < $tbounds->[-1] ? ($tbounds->[0], $tbounds->[-1]) : ($tbounds->[-1], $tbounds->[0])];
 #    $bounds->[0] = 0 if $bounds->[0] < 0;
 #    $bounds->[1] = 1 if $bounds->[1] > 1;
@@ -1417,12 +1417,12 @@ sub t_from_xoff {
 #warn("[$_] ",$find_matching_offset_x->(($bounds->[0]+0.9) + (($bounds->[1]-($bounds->[0]+0.9))*($_/300))),"\n") for (0..300);
 
     my ($t, $msg) = FalsePosition($find_matching_offset_x,$bounds,0.000001,($tbounds->[0]+$tbounds->[-1])/2,'t_from_xoff');
-    
+
     if ($msg) {warn "false position message: $msg";}    
-    
+
     $t = 0 if $t < 0;
     $t = 1 if $t > 1;
-    
+
     return $t;
 }
 
