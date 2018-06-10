@@ -748,6 +748,7 @@ sub intersect_CoCo {
                 my $y_diff_prime = sub {
 
                     # worked it out on paper on 4/28/2018
+                    # how I wish I had that paper here now 6/10/2018
                     
                     my $tA = $bezA->t_from_xoff($_[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1],$spanA->[3]);
                     my $tB = $bezB->t_from_xoff($_[0],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1],$spanB->[3]);
