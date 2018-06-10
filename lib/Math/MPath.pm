@@ -779,7 +779,12 @@ sub getSegSegIntersects {
     my $refstrings = ref($seg1).'--'.ref($seg2);
     my @ret;
 
-    if (($refstrings=~/LineSegment/ || $refstrings=~/ClosePath/) && $refstrings=~/BezierCubicSegment/) {
+    if ($refstrings=~/(LineSegment|ClosePath).*?--/ && $refstrings=~/--.*?(LineSegment|ClosePath)/) {
+
+        push @ret, Math::MPath::Intersections::intersect_LL($seg1,$seg2,$wantThetas);
+
+        }
+    elsif (($refstrings=~/LineSegment/ || $refstrings=~/ClosePath/) && $refstrings=~/BezierCubicSegment/) {
         my $line;
         my $curve;
         my $lineIsSelf;
@@ -854,88 +859,18 @@ sub getSegSegIntersects {
                 }
             }
         }
-    elsif ($refstrings=~/(LineSegment|ClosePath).*?--/ && $refstrings=~/--.*?(LineSegment|ClosePath)/) {
-
-        my $segsegret;
-
-        my $x1= $seg1->{p1}->[0];my $y1= $seg1->{p1}->[1];
-        my $x2= $seg1->{p2}->[0];my $y2= $seg1->{p2}->[1];
-        my $u1=$seg2->{p1}->[0];my $v1=$seg2->{p1}->[1];
-        my $u2=$seg2->{p2}->[0];my $v2=$seg2->{p2}->[1];
-        my $m1 = (($x2 - $x1)==0)?'Inf':($y2 - $y1)/($x2 - $x1);
-        my $m2 = (($u2 - $u1)==0)?'Inf':($v2 - $v1)/($u2 - $u1);
-
-        my $b1;
-        my $b2;
-
-        my  $xi;
-        my $dm = $m1 - $m2;
-        if    ($m1 eq 'Inf' && $m2 ne 'Inf') {$xi = $x1;$b2 = $v1 - ($m2 * $u1);}
-        elsif ($m2 eq 'Inf' && $m1 ne 'Inf') {$xi = $u1;$b1 = $y1 - ($m1 * $x1);}
-        elsif (abs($dm) > 0.000000000001) {
-            $b1 = $y1 - ($m1 * $x1);
-            $b2 = $v1 - ($m2 * $u1);
-            $xi=($b2-$b1)/$dm;
-            }
-        my @lowhiu=($u2>$u1)?($u1,$u2):($u2,$u1);
-        if ($m1 ne 'Inf') {
-            my @lowhix=($x2>$x1)?($x1,$x2):($x2,$x1);
-            if ($m2 eq 'Inf' &&   ($u2<$lowhix[0] || $u2>$lowhix[1]) ) {
-                # NO INTERSECTION
-                }
-            elsif (
-                ($xi || $xi eq 0) &&
-                ($xi < $lowhix[1] || $xi eq $lowhix[1]) &&
-                ($xi > $lowhix[0] || $xi eq $lowhix[0]) &&
-                ($xi < $lowhiu[1] || $xi eq $lowhiu[1]) &&
-                ($xi > $lowhiu[0] || $xi eq $lowhiu[0])
-                ) {
-                my $y=($m1*$xi)+$b1;
-                my @lowhiv=($v2>$v1)?($v1,$v2):($v2,$v1);
-                if ($m2 eq 'Inf' &&
-                    ($y<$lowhiv[0] || $y>$lowhiv[1])
-                    ) {
-                    # NO INTERSECTION
-                    # In this case we set $xi above even though there might not 
-                    # be an intersection. If $y is not in range of the other
-                    # seg's y extremes, there is no intersection.
-                    }
-                else {
-                    $segsegret = [$xi,$y];
-                    }
-                }
-            }
-        elsif ($m2 ne 'Inf'
-            && (
-                ($x1 > $lowhiu[0] && $x1 < $lowhiu[1])
-                ||
-                ($x1 eq $lowhiu[0] && $x1 eq $lowhiu[1])
-                )
-            ) {
-            my @lowhiy=($y2>$y1)?($y1,$y2):($y2,$y1);
-            my @lowhiv=($v2>$v1)?($v1,$v2):($v2,$v1);
-            my $yi = ($m2*$xi)+$b2;
-            if (($yi || $yi eq 0) &&
-                ($yi < $lowhiy[1] || $yi eq $lowhiy[1]) &&
-                ($yi > $lowhiy[0] || $yi eq $lowhiy[0]) &&
-                ($yi < $lowhiv[1] || $yi eq $lowhiv[1]) &&
-                ($yi > $lowhiv[0] || $yi eq $lowhiv[0])
-                ) {
-                $segsegret=[$xi,$yi];
-                }
-            }
-
-        if (defined($segsegret)) {
-            if ($wantThetas) {push(@ret,($m1 eq 'Inf')?$seg1->solveYforTheta($segsegret->[1]):$seg1->solveXforTheta($segsegret->[0]));}
-            else {push(@ret,$segsegret);}
-            }
-        }
     elsif (($refstrings=~/LineSegment/ || $refstrings=~/ClosePath/) && $refstrings=~/EllipticalArc/) {
         my $line;
         my $arc;
         my $lineIsSelf;
-        if ($refstrings=~/LineSegment.*?--/ || $refstrings=~/ClosePath.*?--/) {$lineIsSelf=1;($line,$arc)=($seg1,$seg2);}
-        else                                 {$lineIsSelf=0;($line,$arc)=($seg2,$seg1);}
+        if ($refstrings=~/LineSegment.*?--/ || $refstrings=~/ClosePath.*?--/) {
+            $lineIsSelf=1;
+            ($line,$arc) = ($seg1,$seg2);
+        }
+        else {
+            $lineIsSelf=0;
+            ($line,$arc) = ($seg2,$seg1);
+        }
         my @intersections;
         my $x1=$line->{p1}->[0];
         my $y1=$line->{p1}->[1];
@@ -1161,13 +1096,12 @@ sub getSegSegIntersects {
         # you can find shortcut due to working with arcs and not full ellipses, in general
         # or unless you cook up a quick (to code) rootfinding appoach
         die "elliptical arc--elliptical arc intersection not handled yet (when both aren't circular arcs)";
+        # probably do similar to cubic Bezier intersections in Intersections.pm
         }
 
-    # CubicBezier-CubicBezier intersection is now worked out in
-    # MPath::BezierCubicSegment.pm
-    # Figure out whether to bring that in here, or call that from here.
-    # Might be that you want to break all species of seg-seg intersections
-    # out into a seperate module.
+    elsif (   $refstrings=~/BezierCubicSegment.*?--/ && $refstrings=~/--.*?BezierCubicSegment/ ) {
+        my @ret = Math::MPath::Intersections::intersect_CC($seg1,$seg1);
+    }
 
     return @ret;
     }
