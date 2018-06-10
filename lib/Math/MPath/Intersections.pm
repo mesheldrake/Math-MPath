@@ -1,12 +1,41 @@
-####################################################################################
-###      Math::MPath::Intersections    #############################################
+################################################################################
+###      Math::MPath::Intersections    #########################################
+################################################################################
+#
+# Every possible SVG path segment type intersection with every other
+# segment type.
+#
+# Letters refer to path segments as defined in SVG 1.1 spec.
+#
+# Need intersection functions for all these combinations:
+#
+# LL : LL, LH, LV, HV
+# AL : A1L, A2L, A1H, A2H, A1V, A2V
+# AA : A1A1, A1A2, A2A2
+# QL : QL, QH, QV
+# QA : QA1, QA2
+# QQ
+# CL : CL, CH, CV
+# CA : CA1, CA2
+# CQ
+# CC
+#
+# (A1 is circular arc - special simpler case of elliptical arc)
+# (A2 is general case elliptical arc)
+# (Z (closePath) is equivalent to L for intersections)
+#
+
+
+
+
+
 package Math::MPath::Intersections;
 {
 use Math::MPath::Function::Root qw(BrentsMethod FalsePosition);
 
 our $pi = 4 * atan2(1,1);
 
-sub bez_bez_intersect {
+sub intersect_CC {
 
     # returns list of intersections and the corresponding Bezier parameters
     # for each input Bezier.
@@ -138,12 +167,12 @@ sub bez_bez_intersect {
                 my $sub_t_span_1_B = [$tsB->[0], $split_t_B];
                 my $sub_t_span_2_B = [$split_t_B, $tsB->[1]];
                                 
-                my @int1 = bez_bez_intersect($bezA,$bezB,
+                my @int1 = intersect_CC($bezA,$bezB,
                                              [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]],
                                              [[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?$sub_t_span_2_B:$sub_t_span_1_B, $spanB->[3]]]
                                              );
                 
-                my @int2 = bez_bez_intersect($bezA,$bezB,
+                my @int2 = intersect_CC($bezA,$bezB,
                                              [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]],
                                              [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                              );
@@ -163,7 +192,7 @@ sub bez_bez_intersect {
 }
 
 
-sub bezoff_bezoff_intersect {
+sub intersect_CoCo {
 
     # The first attempt at adapting bez_bez_intersect() for offset beziers
 
@@ -388,7 +417,7 @@ sub bezoff_bezoff_intersect {
                     #warn "re-call 1\n";
                     #warn "  [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]]\n";
                     #warn "  [[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?$sub_t_span_2_B:$sub_t_span_1_B, $spanB->[3]]]\n";
-                    my @int1 = bezoff_bezoff_intersect($bezA,$bezB,$offA,$offB,
+                    my @int1 = intersect_CoCo($bezA,$bezB,$offA,$offB,
                                                  [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]],
                                                  [[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?$sub_t_span_2_B:$sub_t_span_1_B, $spanB->[3]]]
                                                  );
@@ -396,7 +425,7 @@ sub bezoff_bezoff_intersect {
                     #warn "  [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]]\n";
                     #warn "  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]\n";
 
-                    my @int2 = bezoff_bezoff_intersect($bezA,$bezB,$offA,$offB,
+                    my @int2 = intersect_CoCo($bezA,$bezB,$offA,$offB,
                                                  [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]],
                                                  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                                  );
