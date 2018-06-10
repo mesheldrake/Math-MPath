@@ -5,6 +5,7 @@ use Math::MPath::BezierCubicSegment;
 use Math::MPath::BezierQuadraticSegment;
 use Math::MPath::LineSegment;
 use Math::MPath::EllipticalArc;
+use Math::MPath::Intersections;
 
 ######################### start copy-paste of old MikePath guts
 ### Please edit and improve drastically.
