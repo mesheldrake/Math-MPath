@@ -585,7 +585,8 @@ sub intersect_CoCo {
     # returns list of intersections and the corresponding Bezier parameters
     # for each input Bezier offset curve.
 
-    # lutA and lutB optional - used to re-call this function in the intersection
+    # lutA and lutB optional - used to re-call this function in the 
+    # two intersection case
 
     my ($bezA, $bezB, $offA, $offB, $lutA, $lutB) = @_;
 
@@ -760,8 +761,8 @@ sub intersect_CoCo {
                     my $YPrimeA = $bezA->bezierEvalYPrimeofT($tA);
                     my $YPrimeB = $bezB->bezierEvalYPrimeofT($tB);
 
-                    $yoffset_primeA = -($offA/2.0) * 1/(sqrt($nA**2 + 1)**3) * 2*$nA * $nA_prime;
-                    $yoffset_primeB = -($offB/2.0) * 1/(sqrt($nB**2 + 1)**3) * 2*$nB * $nB_prime;
+                    my $yoffset_primeA = -($offA/2.0) * 1/(sqrt($nA**2 + 1)**3) * 2*$nA * $nA_prime;
+                    my $yoffset_primeB = -($offB/2.0) * 1/(sqrt($nB**2 + 1)**3) * 2*$nB * $nB_prime;
 
                     my $YoffPrimeA = ($YPrimeA + $yoffset_primeA);
                     my $YoffPrimeB = ($YPrimeB + $yoffset_primeB);
@@ -828,6 +829,12 @@ sub intersect_CoCo {
     return @ret;
 }
 
+sub intersection_CoL {
+    
+}
+sub intersection_CoLo {
+    # set up an L that represents the Lo, then call intersection_CoL()
+}
 
 sub _rotate2d {
     my ($origin,$point,$angle) = @_;
