@@ -593,8 +593,10 @@ sub intersect_CoCo {
     my $XtoTLUT_A = $lutA ? $lutA : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$bezA->{XtoTLUT}}];
     my $XtoTLUT_B = $lutB ? $lutB : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$bezB->{XtoTLUT}}];
 
-    if (!defined($lutA)) { # assume LUTs already contain offset Xs in their x range entries
-        foreach my $span (@{$XtoTLUT_A}) {   
+    # assume any provided LUTs already contain offset Xs in their x range entries
+    # otherwise we need to do that now for the LUT copies we made
+    if (!defined($lutA)) {
+        foreach my $span (@{$XtoTLUT_A}) {
             $span->[1]->[0]  = $bezA->X_offset($span->[2]->[0] ,$offA,$span->[0]->[1],$span->[3]);
             $span->[1]->[-1] = $bezA->X_offset($span->[2]->[-1],$offA,$span->[0]->[1],$span->[3]);    
         }
@@ -831,7 +833,13 @@ sub intersect_CoCo {
 }
 
 sub intersection_CoL {
-    
+    # Maybe, but probably not, there's a way to work this out similar to
+    # intersect_CL(). Would prefer that, if possible.
+    # But thinking the approach of intersect_CoCo() will work, with some
+    # simplifications for the line part of the math.
+
+    # No, you really need to work it up from scratch.
+
 }
 sub intersection_CoLo {
     # set up an L that represents the Lo, then call intersection_CoL()

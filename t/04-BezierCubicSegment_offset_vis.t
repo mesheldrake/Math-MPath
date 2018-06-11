@@ -72,8 +72,10 @@ my $svg = <<"EOSVG";
 .bzpt3 { fill:red; stroke:none; }
 /* ]]> */
 </style>
+<g transform="scale(1,-1)">
 <path d="$mp_bez_svgd" stroke-width="0.03" stroke="black" fill="none" />
 $pts_svg
+</g>
 </svg>
 EOSVG
 

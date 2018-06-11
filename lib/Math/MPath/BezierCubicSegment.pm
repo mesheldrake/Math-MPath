@@ -1307,7 +1307,7 @@ sub f_offset {
       my ($t,$t_prime,$reversed) = @$t_t_prime;
       my $y = $self->bezierEvalYofT($t);
       my $y_prime_of_x = $self->{Em3} * $t**2 * $t_prime  +  $self->{Fm2} * $t * $t_prime + $self->{G} * $t_prime;
-      my $a = atan2($y_prime_of_x,1) - $pi/2 * ($reversed?-1:1);
+      my $a = atan2($y_prime_of_x,1) + $pi/2 * ($reversed?-1:1);
       push @ret, [$x + $distance * cos($a), $y + $distance * sin($a)];
     }
     if (@ret>0) {
