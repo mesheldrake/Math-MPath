@@ -10,6 +10,7 @@
 .bzpt3 { fill:red; stroke:none; }
 /* ]]> */
 </style>
+<g transform="scale(1,-1)">
 <path d="M -5,-5 L 5,-10 L 0,0 C 200,80   -100,80   100,0 A10,10,0,0,1,100,10" stroke-width="0.03" stroke="black" fill="none" />
 <circle cx="-4.66458980337503" cy="-4.32917960675006" seq="0" r="0.1" class="bzpt2"/>
 <circle cx="-4.18746992030292" cy="-4.56773954828612" seq="1" r="0.1" class="bzpt2"/>
@@ -512,4 +513,5 @@
 <circle cx="99.7974274153023" cy="8.74568077084788" seq="498" r="0.1" class="bzpt2"/>
 <circle cx="99.585683481431" cy="9.19130223536868" seq="499" r="0.1" class="bzpt2"/>
 <circle cx="99.3504809471617" cy="9.625" seq="500" r="0.1" class="bzpt2"/>
+</g>
 </svg>
