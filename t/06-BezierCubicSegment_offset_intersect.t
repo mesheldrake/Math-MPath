@@ -19,13 +19,13 @@ my @intersections = Math::MPath::Intersections::intersect_CoCo($mp_bez_seg,$mp_b
 ok( scalar(@intersections) == 2 , 'two intersections');
 
 ok( @intersections
-    && $intersections[0]->[0] - 50.0950 < 0.0001
-    && $intersections[0]->[1] - 23.7060 < 0.0001
+    && abs($intersections[0]->[0] - 49.9052) < 0.0001
+    && abs($intersections[0]->[1] - 24.2942) < 0.0001
     , '1st intersection coords check'
 );
 ok( @intersections
-    && $intersections[1]->[0] - 49.9049 < 0.0001
-    && $intersections[1]->[1] - 23.7060 < 0.0001
+    && abs($intersections[1]->[0] - 50.0947) < 0.0001
+    && abs($intersections[1]->[1] - 24.2942) < 0.0001
     , '2nd intersection coords check'
 );
 
@@ -44,13 +44,13 @@ my @intersection_pair = Math::MPath::Intersections::intersect_CoCo($mp_bez_seg_1
 ok(scalar(@intersection_pair) == 2);
 
 ok( @intersection_pair > 0
-    && $intersection_pair[0]->[0] - 10.7108 < 0.0001
-    && $intersection_pair[0]->[1] -  9.9646 < 0.0001
+    && abs($intersection_pair[0]->[0] -  9.9973) < 0.0001
+    && abs($intersection_pair[0]->[1] - 10.0306) < 0.0001
 );
 
 ok( @intersection_pair > 1
-    && $intersection_pair[1]->[0] - 25.6269 < 0.0001
-    && $intersection_pair[1]->[1] - 22.4997 < 0.0001
+    && abs($intersection_pair[1]->[0] - 25.6850) < 0.0001
+    && abs($intersection_pair[1]->[1] - 23.2022) < 0.0001
 );
 
 #diag("intersection pair count:".scalar(@intersection_pair)."\n".join("\n",map {'['.join(',',@$_).']'} @intersection_pair));

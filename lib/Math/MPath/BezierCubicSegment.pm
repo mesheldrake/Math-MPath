@@ -1403,7 +1403,7 @@ sub t_from_xoff {
         my $x0 = $self->bezierEvalXofT($t0);
         my $t_prime_0 = $tprimefunc->($x0);
         my $y_prime_of_x_0 = $t_prime_0 == Inf ? Inf : $self->{Em3} * $t0**2 * $t_prime_0  +  $self->{Fm2} * $t0 * $t_prime_0 + $self->{G} * $t_prime_0;
-        my $a0 = atan2($y_prime_of_x_0,1) - $pi/2 * ($reversed?-1:1);
+        my $a0 = atan2($y_prime_of_x_0,1) + $pi/2 * ($reversed?-1:1);
 
         #warn "findloop: ", ($xoff - ($x0 + $offset * cos($a0))) , " = $xoff - ($x0 + $offset * cos($a0))\n";
 
