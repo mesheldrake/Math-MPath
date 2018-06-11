@@ -781,7 +781,7 @@ sub intersect_CoCo {
 
                 if ($at_start > 0 && $at_end < 0 || $at_start < 0 && $at_end > 0) {
 
-                    my $bounds_xoffA = [$spanx->[0] + 1.00001 * $e,$spanx->[1] - 1.00001 * $e];
+                    my $bounds_xoffA = [$spanx->[0],$spanx->[1]];
                     my ($split_xoff_A,$msg)=FalsePosition($y_diff_prime,$bounds_xoffA,0.00001,(($bounds_xoffA->[1]-$bounds_xoffA->[0])/2),'subBez-subBez intersection finding - find pair split parameter');
 
                     warn "split find fail msg: $msg\n" if $msg;
@@ -1080,3 +1080,4 @@ sub _rotate2d {
 
 } # end package
 1;
+
