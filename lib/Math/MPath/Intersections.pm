@@ -576,6 +576,49 @@ sub intersect_CC {
 ### OFFSET INTERSECTIONS                                                     ###
 ################################################################################
 
+sub intersect_LoLo {
+    my ($lineA, $lineB, $offA, $offB, $wantThetas) = @_;
+
+    my $lineA = Math::MPath::LineSegment->new(
+        [ $lineA->{p1}->[0] + $offA * cos($lineA->{angleNormal}),
+          $lineA->{p1}->[1] + $offA * sin($lineA->{angleNormal}) ],
+        [ $lineA->{p2}->[0] + $offA * cos($lineA->{angleNormal}),
+          $lineA->{p2}->[1] + $offA * sin($lineA->{angleNormal}) ]
+    );
+    my $lineB = Math::MPath::LineSegment->new(
+        [ $lineB->{p1}->[0] + $offB * cos($lineB->{angleNormal}),
+          $lineB->{p1}->[1] + $offB * sin($lineB->{angleNormal}) ],
+        [ $lineB->{p2}->[0] + $offB * cos($lineB->{angleNormal}),
+          $lineB->{p2}->[1] + $offB * sin($lineB->{angleNormal}) ]
+    );
+
+    return intersect_LL($lineA, $lineB, $wantThetas);
+}
+
+sub intersect_A1oLo {
+    my ($arc, $line, $offCircle, $offLine, $wantThetas, $lineIsSelf) = @_;
+
+    my $arc_off_radius = $arc->{rx} + $offCircle;
+    my $arc_off = Math::MPath::EllipticalArc->new(
+        [$arc->{p1}->[0], $arc->{p1}->[1]],
+        [$arc_off_radius,$arc_off_radius],
+        $arc->{phi},
+        $arc->{large_arc_flag},
+        $arc->{sweep_flag},
+        [$arc->{p2}->[0], $arc->{p2}->[1]],
+        $arc->{precision},
+        $arc->{isLite}
+    );
+
+    my $line_off = Math::MPath::LineSegment->new(
+        [ $line->{p1}->[0] + $offLine * cos($line->{angleNormal}),
+          $line->{p1}->[1] + $offLine * sin($line->{angleNormal}) ],
+        [ $line->{p2}->[0] + $offLine * cos($line->{angleNormal}),
+          $line->{p2}->[1] + $offLine * sin($line->{angleNormal}) ]
+    );
+
+    return intersect_AL($arc_off, $line_off, $wantThetas, $lineIsSelf);
+}
 
 sub intersect_CoCo {
 
