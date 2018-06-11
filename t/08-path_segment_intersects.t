@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 11;
+use Test::More tests => 20;
 
 use Math::MPath;
 
@@ -102,6 +102,64 @@ ok(    abs($intersections[0]->[0] - 11.4011) < 0.0001
 );
 ok(    abs($intersections[1]->[0] - 27.4052) < 0.0001
     && abs($intersections[1]->[1] - 24.0107) < 0.0001
+);
+
+## CA, CA1, CoAo, CoA1o ## TODO
+
+
+## CC ## cubic Bezier loop self-intersect case
+$mp_bez_seg = Math::MPath::BezierCubicSegment->new([0,0],[200,80],[-100,80],[100,0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_CC($mp_bez_seg,$mp_bez_seg);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(    abs($intersections[0]->[0] - 50) < 0.0001
+    && abs($intersections[0]->[1] - 24) < 0.0001
+);
+
+## CC ## cubic Bezier intersection where there are two intersections between decomposed sub sections of beziers
+@intersections = Math::MPath::Intersections::intersect_CC(
+    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
+    Math::MPath::BezierCubicSegment->new([0,6.0],[13.0, 9.0],[24.0,19.0],[30.0,29.0],0.00001,1)
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
+    && abs($intersections[0]->[1] -  9.9952) < 0.0001
+);
+ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
+    && abs($intersections[1]->[1] - 22.8527) < 0.0001
+);
+
+## CoCo ## same looped bezier but two different offsets; should intersect two times
+$mp_bez_seg = Math::MPath::BezierCubicSegment->new([0,0],[200,80],[-100,80],[100,0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_CoCo($mp_bez_seg,$mp_bez_seg, 0.3, 0.2);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok( scalar(@intersections) == 2 , 'two intersections');
+ok( @intersections
+    && abs($intersections[0]->[0] - 49.9052) < 0.0001
+    && abs($intersections[0]->[1] - 24.2942) < 0.0001
+    , '1st intersection coords check'
+);
+ok( @intersections
+    && abs($intersections[1]->[0] - 50.0947) < 0.0001
+    && abs($intersections[1]->[1] - 24.2942) < 0.0001
+    , '2nd intersection coords check'
+);
+
+## CoCo ## cubic Bezier intersection where there are two intersections between decomposed sub sections of OFFSET beziers
+@intersections = Math::MPath::Intersections::intersect_CoCo(
+    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
+    Math::MPath::BezierCubicSegment->new([0,6.0],[13.0,9.0] ,[24.0,19.0],[30.0,29.0],0.00001,1),
+    0.3, 0.2
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2);
+ok( @intersections > 0
+    && abs($intersections[0]->[0] -  9.9973) < 0.0001
+    && abs($intersections[0]->[1] - 10.0306) < 0.0001
+);
+
+ok( @intersections > 1
+    && abs($intersections[1]->[0] - 25.6850) < 0.0001
+    && abs($intersections[1]->[1] - 23.2022) < 0.0001
 );
 
 1;
