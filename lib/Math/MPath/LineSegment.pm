@@ -244,6 +244,26 @@ sub point_offset {
     $y +=  ($self->{dx}/$self->{length}) * $distance;
     return [$x,$y];
 }
+sub X_offset {
+    my ($self, $t, $distance) = @_;
+    my ($x) = @{$self->point($t)};
+    $x += -($self->{dy}/$self->{length}) * $distance;
+    return $x;
+}
+sub Y_offset {
+    my ($self, $t, $distance) = @_;
+    my (undef,$y) = @{$self->point($t)};
+    $y +=  ($self->{dx}/$self->{length}) * $distance;
+    return $y;
+}
+sub t_from_xoff {
+    my ($self, $offsetx, $offset_length) = @_;
+    my $non_offset_x = $offsetx;
+    if (0 + $offset_length ne '0') {
+        $non_offset_x -= $offset_length * cos($self->{angleNormal});
+    }
+    return $self->solveXforTheta($non_offset_x);
+}
 
 sub secondDerivative {return 0;}
 sub slopeTangent {return $_[0]->{slopeTangent};}
