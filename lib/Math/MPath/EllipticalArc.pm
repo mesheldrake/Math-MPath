@@ -163,8 +163,6 @@ sub new {
     $self->{Fydangerranges} = [];
     $self->{fxdangerranges} = [];
 
-    $self->{length}=getLength($self,1000,0,1);
-
     return $self;
 }
 
