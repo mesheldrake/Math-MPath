@@ -210,7 +210,6 @@ sub new {
 
     my $t_of_x_eqn_1and2 = sub {
         my ($x,$which_theta) = @_;
-        warn "t_of_... ($x,$which_theta)\n";
         my $x_unshift = $x - $self->{cx};
         my $x_line_point_unshift_unrot = _rotate2d([0,0],[$x_unshift,0],-$self->{phi_radians});
         my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
@@ -222,29 +221,16 @@ sub new {
                    ? asin(1/ sqrt($a**2 + $b**2)) - $phase_angle
                    : asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi # + pi by educated trial and error
                    ;
-        my $othertheta  = !$which_theta
-                   ? asin(1/ sqrt($a**2 + $b**2)) - $phase_angle
-                   : asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi # + pi by educated trial and error
-                   ;
+        if ($self->{sweep_flag}) {while ($theta < $self->{theta1}) {$theta += 2*$pi;}}
+        else                     {while ($theta > $self->{theta1}) {$theta -= 2*$pi;}}
         my $t = $self->arcThetaToNormalizedTheta($theta);
-        my $othert = $self->arcThetaToNormalizedTheta($othertheta);
-
-# here - seems when sweep flag is true (positive delta theta, CCW when y-up)
-#        we don't get what we want from cases a and c, or something
-#        All the right answers seem to be floating around, just need to nail the
-#        logic that picks out the right ones
-#warn "tttt: [$theta:$t],[$othertheta:$othert]\n";
         return $t;
     };
-
-    #warn "div_ts: ",join(', ',@div_ts),"\n";
 
     for (my $i = 1; $i < @div_ts; $i++) {
         my $ta = $div_ts[$i-1];
         my $tb = $div_ts[$i];
         my $tmid = ($ta + $tb) / 2;
-
-        #warn "div_ts pair [",$div_ts[$i-1],", ",$div_ts[$i],"]\n";
 
         my $xa = $self->evalXofTheta($ta);
         my $xb = $self->evalXofTheta($tb);
@@ -258,13 +244,16 @@ sub new {
         my @tx_eqns;
         my @ty_eqns;
 
+        # The "which" flag in these calls to t_of_x_eqn_1and2()
+        # was figured by trial and error, and may not be right yet, or may be right.
+
         if ($angle_mid > 0) {
             if ($angle_mid < $pi/2) { # quadrant 1
                 push @tx_eqns, (
                     sub {
                          #warn "(eq a)\n";
                          return $t_of_x_eqn_1and2->($_[0],    0    );
-                        } # does sweep_flag do it? not sure, but getting closer
+                        }
                 );
             }
             elsif ($angle_mid < $pi) { # quadrant 2
@@ -272,7 +261,7 @@ sub new {
                     sub {
                          #warn "(eq b)\n";
                          return $t_of_x_eqn_1and2->($_[0],    1    );
-                        } # does sweep_flag do it? not sure, but getting closer
+                        }
                 );
             }
             else { warn "out of bounds angle [$angle_mid]";}
@@ -283,7 +272,7 @@ sub new {
                     sub {
                          #warn "(eq c)\n";
                          return $t_of_x_eqn_1and2->($_[0],    1    );
-                        } # does sweep_flag do it? not sure, but getting closer
+                        }
                 );
             }
             elsif ($angle_mid > -$pi) { # quadrant 3
@@ -291,7 +280,7 @@ sub new {
                     sub {
                          #warn "(eq d)\n";
                          return $t_of_x_eqn_1and2->($_[0],    0    );
-                        } # does sweep_flag do it? not sure, but getting closer
+                        }
                 );
             }
             else { warn "out of bounds angle [$angle_mid]";}
@@ -464,31 +453,40 @@ sub f {
 =cut
 
 my $x_unshift = $x - $self->{cx};
-warn "\nx unshifted: $x_unshift\n";
+#warn "\nx unshifted: $x_unshift\n";
 my $x_line_point_unshift_unrot = _rotate2d([0,0],[$x_unshift,0],-$self->{phi_radians});
-warn "x line point rotated: [$x_line_point_unshift_unrot->[0], $x_line_point_unshift_unrot->[1]]\n";
+#warn "x line point rotated: [$x_line_point_unshift_unrot->[0], $x_line_point_unshift_unrot->[1]]\n";
 my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
-warn "m: $m\n";
+#warn "m: $m\n";
 my $y1_min_mx1 = $x_line_point_unshift_unrot->[1]-$m*$x_line_point_unshift_unrot->[0];
 my $a =        $self->{ry}  / $y1_min_mx1;
-warn "a: $a\n";
+#warn "a: $a\n";
 my $b = -($m * $self->{rx}) / $y1_min_mx1;
-warn "b: $b\n";
+#warn "b: $b\n";
 my $phase_angle = atan2( $b , $a );
-warn "phase: $phase_angle (",($phase_angle*(180/$pi)),")\n";
+#warn "phase: $phase_angle (",($phase_angle*(180/$pi)),")\n";
 my $test_theta   = asin(1/ sqrt($a**2 + $b**2)) - $phase_angle;
 my $test_theta_2 = asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi; # + pi by educated trial and error
+if ($self->{sweep_flag}) {while ($test_theta < $self->{theta1}) {$test_theta += 2*$pi;} while ($test_theta_2 < $self->{theta1}) {$test_theta_2 += 2*$pi;}}
+else                     {while ($test_theta > $self->{theta1}) {$test_theta -= 2*$pi;} while ($test_theta_2 > $self->{theta1}) {$test_theta_2 -= 2*$pi;}}
 my $x_result_1 = $self->{rx} * cos($test_theta   + $_*($pi/2)) * cos($self->{phi_radians}) + $self->{ry} * sin($test_theta   + $_*($pi/2)) * -sin($self->{phi_radians}) + $self->{cx};
 my $x_result_2 = $self->{rx} * cos($test_theta_2 + $_*($pi/2)) * cos($self->{phi_radians}) + $self->{ry} * sin($test_theta_2 + $_*($pi/2)) * -sin($self->{phi_radians}) + $self->{cx};
 my $y_result_1 = $self->{rx} * cos($test_theta   + $_*($pi/2)) * sin($self->{phi_radians}) + $self->{ry} * sin($test_theta   + $_*($pi/2)) *  cos($self->{phi_radians}) + $self->{cy};
 my $y_result_2 = $self->{rx} * cos($test_theta_2 + $_*($pi/2)) * sin($self->{phi_radians}) + $self->{ry} * sin($test_theta_2 + $_*($pi/2)) *  cos($self->{phi_radians}) + $self->{cy};
 
-warn "theta 1 xy: [$x_result_1, $y_result_1][$test_theta]\n";
-warn "theta 2 xy: [$x_result_2, $y_result_2][$test_theta_2]\n";
+#warn "between?1: $self->{theta1} | $test_theta   | $self->{theta2}\n";
+#warn "between?2: $self->{theta1} | $test_theta_2 | $self->{theta2}\n";
+
+warn "test theta 1 xy: [$x_result_1, $y_result_1][$test_theta]\n";
+warn "test theta 2 xy: [$x_result_2, $y_result_2][$test_theta_2]\n";
+
+=cut
+
+=cut
 
 my @test_ys = map  {$self->evalYofTheta($_->[0]->[0]->($x))} 
               grep {
-                    warn "$x >= ",$_->[1]->[0]," && $x < ",$_->[1]->[-1],"\n";
+                    #warn "$x >= ",$_->[1]->[0]," && $x < ",$_->[1]->[-1],"\n";
                     $x >= $_->[1]->[0] && $x < $_->[1]->[-1]
                    } @{$self->{XtoTLUT}};
 warn "test ys: ",join(', ',@test_ys),"\n";
