@@ -16,7 +16,9 @@ sub new {
     $self->{rx} = abs($self->{r}->[0]);
     $self->{ry} = abs($self->{r}->[1]);
     $self->{phi} = shift;
-    $self->{phi} = ((1000000*$self->{phi}) % (360000000))/1000000; # angle starts as degrees, mod 360
+    #$self->{phi} = ((1000000*$self->{phi}) % (360000000))/1000000; # angle starts as degrees, mod 360, perl svg1.1 implementation notes
+    while ($self->{phi} >  360) {$self->{phi} -= 360;}
+    while ($self->{phi} < -360) {$self->{phi} += 360;}
     $self->{phi_radians} = $self->{phi} * ($pi/180);
     $self->{large_arc_flag} = shift;
     $self->{sweep_flag} = shift;
@@ -95,7 +97,9 @@ sub new {
 
     $self->{delta_theta} = $delta_theta_sign * (($pi/2) - asin($delta_theta_arccos_arg));
 
-    #Make all these theta mods rational, in accordance with what's supposed to happen, overcoming any angle flattenning that comes from atan sqrt usage above
+    # Make all these theta mods sensible, 
+    # in accordance with what's supposed to happen, 
+    # overcoming any angle flattenning that comes from atan sqrt usage above.
 
     #mod(360deg) for delta_theta
     if (abs($self->{delta_theta}) > 2*$pi) {
@@ -162,6 +166,145 @@ sub new {
     # switch to using those?
     $self->{Fydangerranges} = [];
     $self->{fxdangerranges} = [];
+
+    # Following not ideal but workable approach developed for cubic Bezier,
+    # make a LUT of x spans where the elliptical arc is monotonic, where
+    # we can assign definite t(x) and t(y) one-to-one functions, to facilitate
+    # intersections and offset intersections with other curves, using the
+    # same approach worked out for intersections of two cubic Beziers
+    # in Intersections.pm
+
+    my @div_angles;
+    my $n = int($self->{theta1}/($pi/2)); # multiple of pi/2 that gives the axis angle _before_ theta1, when sweeping away from 0 radians in same direction as delta_theta; [-1,0,1]
+    for (0 .. abs(int($self->{delta_theta}/($pi/2)))) { # should loop 1 to 4 times
+        $n += $self->{delta_theta} > 0 ? 1 : -1; # now a multiple of pi/2 that gives an axis angle _after_ theta1, when sweeping away from 0 radians in same direction as delta_theta; can be as high/low as +/-5 if n started at +/-1
+        my $axis_angle = $n*($pi/2);
+        my $axis_delta_angle = $axis_angle - $self->{theta1};
+        # this is only potentially false on the last loop
+        if (abs($axis_delta_angle) < abs($self->{delta_theta})) {
+            push @div_angles, $axis_angle;
+        }
+    }
+
+    my @div_ts = (0,1);
+
+    push @div_ts, map $self->arcThetaToNormalizedTheta($_), @div_angles;
+
+    if ($self->{phi} ne 0) {
+        push @div_ts, ((!$self->{isLite})?$self->solveXPrimeforThetaBig(Math::BigFloat->bzero()):$self->solveXPrimeforTheta(0));
+        push @div_ts, ((!$self->{isLite})?$self->solveYPrimeforThetaBig(Math::BigFloat->bzero()):$self->solveYPrimeforTheta(0));
+    }
+
+    @div_ts = sort {$a<=>$b} @div_ts;
+
+    # Create the same kind of sort of clunky LUT we worked up in cubic Bezier case
+    # so we can work with these elliptical arc sub segments in the same way -
+    # especially in subsegment intersections. Later we'll clean and simplify how
+    # all that gets set up there and here.
+
+    my @XtoTLUT; # [ [t(x),t'(x),t''(x),t(y),t'(y),t''(y)],
+                 #   [xlow,xhigh], # in left-to-right order (as opposed to t order, which may or may not be the same)
+                 #   [t corresponding to xlow,t corresponding to xhigh],
+                 #   [isReversed - true if t0 corresponds to xhigh]
+                 # ]
+
+    my $t_of_x_eqn_1and2 = sub {
+        my ($x,$which_theta) = @_;
+        warn "t_of_... ($x,$which_theta)\n";
+        my $x_unshift = $x - $self->{cx};
+        my $x_line_point_unshift_unrot = _rotate2d([0,0],[$x_unshift,0],-$self->{phi_radians});
+        my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
+        my $y1_min_mx1 = $x_line_point_unshift_unrot->[1]-$m*$x_line_point_unshift_unrot->[0];
+        my $a =        $self->{ry}  / $y1_min_mx1;
+        my $b = -($m * $self->{rx}) / $y1_min_mx1;
+        my $phase_angle = atan2( $b , $a );
+        my $theta  = $which_theta
+                   ? asin(1/ sqrt($a**2 + $b**2)) - $phase_angle
+                   : asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi # + pi by educated trial and error
+                   ;
+        my $othertheta  = !$which_theta
+                   ? asin(1/ sqrt($a**2 + $b**2)) - $phase_angle
+                   : asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi # + pi by educated trial and error
+                   ;
+        my $t = $self->arcThetaToNormalizedTheta($theta);
+        my $othert = $self->arcThetaToNormalizedTheta($othertheta);
+
+# here - seems when sweep flag is true (positive delta theta, CCW when y-up)
+#        we don't get what we want from cases a and c, or something
+#        All the right answers seem to be floating around, just need to nail the
+#        logic that picks out the right ones
+#warn "tttt: [$theta:$t],[$othertheta:$othert]\n";
+        return $t;
+    };
+
+    #warn "div_ts: ",join(', ',@div_ts),"\n";
+
+    for (my $i = 1; $i < @div_ts; $i++) {
+        my $ta = $div_ts[$i-1];
+        my $tb = $div_ts[$i];
+        my $tmid = ($ta + $tb) / 2;
+
+        #warn "div_ts pair [",$div_ts[$i-1],", ",$div_ts[$i],"]\n";
+
+        my $xa = $self->evalXofTheta($ta);
+        my $xb = $self->evalXofTheta($tb);
+        my $isReversed = $xa > $xb;
+
+        my $angle_mid = $self->normalizedThetaToArcTheta($tmid);
+
+        while ($angle_mid >  $pi) {$angle_mid -= 2*$pi;}
+        while ($angle_mid < -$pi) {$angle_mid += 2*$pi;}
+
+        my @tx_eqns;
+        my @ty_eqns;
+
+        if ($angle_mid > 0) {
+            if ($angle_mid < $pi/2) { # quadrant 1
+                push @tx_eqns, (
+                    sub {
+                         #warn "(eq a)\n";
+                         return $t_of_x_eqn_1and2->($_[0],    0    );
+                        } # does sweep_flag do it? not sure, but getting closer
+                );
+            }
+            elsif ($angle_mid < $pi) { # quadrant 2
+                push @tx_eqns, (
+                    sub {
+                         #warn "(eq b)\n";
+                         return $t_of_x_eqn_1and2->($_[0],    1    );
+                        } # does sweep_flag do it? not sure, but getting closer
+                );
+            }
+            else { warn "out of bounds angle [$angle_mid]";}
+        }
+        elsif ($angle_mid < 0) {
+            if ($angle_mid > -$pi/2) { # quadrant 4
+                push @tx_eqns, (
+                    sub {
+                         #warn "(eq c)\n";
+                         return $t_of_x_eqn_1and2->($_[0],    1    );
+                        } # does sweep_flag do it? not sure, but getting closer
+                );
+            }
+            elsif ($angle_mid > -$pi) { # quadrant 3
+                push @tx_eqns, (
+                    sub {
+                         #warn "(eq d)\n";
+                         return $t_of_x_eqn_1and2->($_[0],    0    );
+                        } # does sweep_flag do it? not sure, but getting closer
+                );
+            }
+            else { warn "out of bounds angle [$angle_mid]";}
+        }
+
+        push @XtoTLUT, [[@tx_eqns,@ty_eqns],[$isReversed ? ($xb,$xa):($xa,$xb)],[$isReversed ? ($tb,$ta):($ta,$tb)],$isReversed];
+
+    }
+
+    # sort in ascending t order
+    @XtoTLUT = sort {$a->[2]->[$a->[3]?0:1] <=> $b->[2]->[$b->[3]?0:1]} @XtoTLUT;
+
+    $self->{XtoTLUT} = \@XtoTLUT;
 
     return $self;
 }
@@ -316,6 +459,42 @@ sub isWithinThetaRange {
 sub f {
     my $self = shift;
     my $x = shift;
+
+
+=cut
+
+my $x_unshift = $x - $self->{cx};
+warn "\nx unshifted: $x_unshift\n";
+my $x_line_point_unshift_unrot = _rotate2d([0,0],[$x_unshift,0],-$self->{phi_radians});
+warn "x line point rotated: [$x_line_point_unshift_unrot->[0], $x_line_point_unshift_unrot->[1]]\n";
+my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
+warn "m: $m\n";
+my $y1_min_mx1 = $x_line_point_unshift_unrot->[1]-$m*$x_line_point_unshift_unrot->[0];
+my $a =        $self->{ry}  / $y1_min_mx1;
+warn "a: $a\n";
+my $b = -($m * $self->{rx}) / $y1_min_mx1;
+warn "b: $b\n";
+my $phase_angle = atan2( $b , $a );
+warn "phase: $phase_angle (",($phase_angle*(180/$pi)),")\n";
+my $test_theta   = asin(1/ sqrt($a**2 + $b**2)) - $phase_angle;
+my $test_theta_2 = asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi; # + pi by educated trial and error
+my $x_result_1 = $self->{rx} * cos($test_theta   + $_*($pi/2)) * cos($self->{phi_radians}) + $self->{ry} * sin($test_theta   + $_*($pi/2)) * -sin($self->{phi_radians}) + $self->{cx};
+my $x_result_2 = $self->{rx} * cos($test_theta_2 + $_*($pi/2)) * cos($self->{phi_radians}) + $self->{ry} * sin($test_theta_2 + $_*($pi/2)) * -sin($self->{phi_radians}) + $self->{cx};
+my $y_result_1 = $self->{rx} * cos($test_theta   + $_*($pi/2)) * sin($self->{phi_radians}) + $self->{ry} * sin($test_theta   + $_*($pi/2)) *  cos($self->{phi_radians}) + $self->{cy};
+my $y_result_2 = $self->{rx} * cos($test_theta_2 + $_*($pi/2)) * sin($self->{phi_radians}) + $self->{ry} * sin($test_theta_2 + $_*($pi/2)) *  cos($self->{phi_radians}) + $self->{cy};
+
+warn "theta 1 xy: [$x_result_1, $y_result_1][$test_theta]\n";
+warn "theta 2 xy: [$x_result_2, $y_result_2][$test_theta_2]\n";
+
+my @test_ys = map  {$self->evalYofTheta($_->[0]->[0]->($x))} 
+              grep {
+                    warn "$x >= ",$_->[1]->[0]," && $x < ",$_->[1]->[-1],"\n";
+                    $x >= $_->[1]->[0] && $x < $_->[1]->[-1]
+                   } @{$self->{XtoTLUT}};
+warn "test ys: ",join(', ',@test_ys),"\n";
+
+=cut
+
     my @intersections;
     $x -= $self->{cx};
     if ($x < -$self->{rx} || $x > $self->{rx}) {return;}
@@ -325,7 +504,7 @@ sub f {
             && ($x < $self->{'fxdangerranges'}->[$i]->[1] || $x eq $self->{'fxdangerranges'}->[$i]->[1])
             && !ref($x)
            ) {
-            #print "DANGER ZONE FOR f(x) (arc)! x:$x\n";
+            # print "DANGER ZONE FOR f(x) (arc)! x:$x\n";
             $x=Math::BigFloat->new($x) if !ref($x);
         }
     }
@@ -354,6 +533,7 @@ sub f {
         $intersections[$i] = _rotate2d([0,0],$intersections[$i],$self->{phi_radians});
         $intersections[$i]->[0]+=$self->{cx};
         $intersections[$i]->[1]+=$self->{cy};
+        #warn "intersection: [$intersections[$i]->[0],$intersections[$i]->[1]]\n";
     }
 
     #Now check to see of those intersections are within bounds - within sweep
