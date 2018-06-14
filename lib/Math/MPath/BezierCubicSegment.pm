@@ -946,7 +946,7 @@ my $y=$_[0];
         my $xb = $x_intervals[$i]->[1];
 
         my $xmid = ($xa + $xb) / 2.0;
-        my $tmid = ($t_intervals[$i]->[0] + $x_intervals[$i]->[1]) / 2.0;
+        my $tmid = ($t_intervals[$i]->[0] + $t_intervals[$i]->[1]) / 2.0;
         my $ymid = $self->bezierEvalYofT($tmid);
 
         my $Rmid = $R->($xmid);
