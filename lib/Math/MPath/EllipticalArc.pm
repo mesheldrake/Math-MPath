@@ -227,6 +227,25 @@ sub new {
         return $t;
     };
 
+    my $t_of_y_eqn_1and2 = sub {
+        my ($y,$which_theta) = @_;
+        my $y_unshift = $y - $self->{cy};
+        my $y_line_point_unshift_unrot = _rotate2d([0,0],[0,$y_unshift],-$self->{phi_radians});
+        my $m = sin(-$self->{phi_radians})/cos(-$self->{phi_radians});
+        my $y1_min_mx1 = $y_line_point_unshift_unrot->[1]-$m*$y_line_point_unshift_unrot->[0];
+        my $a =        $self->{ry}  / $y1_min_mx1;
+        my $b = -($m * $self->{rx}) / $y1_min_mx1;
+        my $phase_angle = atan2( $b , $a );
+        my $theta  = $which_theta
+                   ? asin(1/ sqrt($a**2 + $b**2)) - $phase_angle
+                   : asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi # + pi by educated trial and error
+                   ;
+        if ($self->{sweep_flag}) {while ($theta < $self->{theta1}) {$theta += 2*$pi;}}
+        else                     {while ($theta > $self->{theta1}) {$theta -= 2*$pi;}}
+        my $t = $self->arcThetaToNormalizedTheta($theta);
+        return $t;
+    };
+
     for (my $i = 1; $i < @div_ts; $i++) {
         my $ta = $div_ts[$i-1];
         my $tb = $div_ts[$i];
@@ -234,6 +253,8 @@ sub new {
 
         my $xa = $self->evalXofTheta($ta);
         my $xb = $self->evalXofTheta($tb);
+        my $ya = $self->evalYofTheta($ta);
+        my $yb = $self->evalYofTheta($tb);
         my $isReversed = $xa > $xb;
 
         my $angle_mid = $self->normalizedThetaToArcTheta($tmid);
@@ -244,8 +265,8 @@ sub new {
         my @tx_eqns;
         my @ty_eqns;
 
-        # The "which" flag in these calls to t_of_x_eqn_1and2()
-        # was figured by trial and error, and may not be right yet, or may be right.
+        # The "which" flag in these calls to t_of_x_eqn_1and2() and
+        # t_of_y_eqn_1and2() was figured by trial and error.
 
         if ($angle_mid > 0) {
             if ($angle_mid < $pi/2) { # quadrant 1
@@ -253,7 +274,13 @@ sub new {
                     sub {
                          #warn "(eq a)\n";
                          return $t_of_x_eqn_1and2->($_[0],    0    );
-                        }
+                    },
+                    undef,
+                    undef,
+                    sub {
+                         #warn "(eq a)\n";
+                         return $t_of_y_eqn_1and2->($_[0],    1    );
+                    }
                 );
             }
             elsif ($angle_mid < $pi) { # quadrant 2
@@ -261,7 +288,13 @@ sub new {
                     sub {
                          #warn "(eq b)\n";
                          return $t_of_x_eqn_1and2->($_[0],    1    );
-                        }
+                    },
+                    undef,
+                    undef,
+                    sub {
+                         #warn "(eq b)\n";
+                         return $t_of_y_eqn_1and2->($_[0],    0    );
+                    }
                 );
             }
             else { warn "out of bounds angle [$angle_mid]";}
@@ -272,7 +305,13 @@ sub new {
                     sub {
                          #warn "(eq c)\n";
                          return $t_of_x_eqn_1and2->($_[0],    1    );
-                        }
+                    },
+                    undef,
+                    undef,
+                    sub {
+                         #warn "(eq c)\n";
+                         return $t_of_y_eqn_1and2->($_[0],    0    );
+                    }
                 );
             }
             elsif ($angle_mid > -$pi) { # quadrant 3
@@ -280,13 +319,24 @@ sub new {
                     sub {
                          #warn "(eq d)\n";
                          return $t_of_x_eqn_1and2->($_[0],    0    );
-                        }
+                    },
+                    undef,
+                    undef,
+                    sub {
+                         #warn "(eq d)\n";
+                         return $t_of_y_eqn_1and2->($_[0],    1    );
+                    }
                 );
             }
             else { warn "out of bounds angle [$angle_mid]";}
         }
 
-        push @XtoTLUT, [[@tx_eqns,@ty_eqns],[$isReversed ? ($xb,$xa):($xa,$xb)],[$isReversed ? ($tb,$ta):($ta,$tb)],$isReversed];
+        push @XtoTLUT, [[@tx_eqns,@ty_eqns],
+                        [$isReversed ? ($xb,$xa):($xa,$xb)],
+                        [$isReversed ? ($tb,$ta):($ta,$tb)],
+                        $isReversed,
+                        [$ya > $yb ? ($yb,$ya):($ya,$yb)] # hack this in here quick to get F(y) working
+                       ];
 
     }
 
@@ -445,53 +495,18 @@ sub isWithinThetaRange {
         }
     }
 }
+
 sub f {
+    my ($self, $x) = @_;
+    my @ys = map  {$self->evalYofTheta($_->[0]->[0]->($x))}  # Y(t(x))
+             grep {$x >= $_->[1]->[0] && $x < $_->[1]->[-1]} # x is within sub seg's x span
+             @{$self->{XtoTLUT}};                            # in sorted t order
+    return wantarray ? @ys : (scalar(@ys) ? $ys[0] : undef);
+}
+
+sub f_old {
     my $self = shift;
     my $x = shift;
-
-
-=cut
-
-my $x_unshift = $x - $self->{cx};
-#warn "\nx unshifted: $x_unshift\n";
-my $x_line_point_unshift_unrot = _rotate2d([0,0],[$x_unshift,0],-$self->{phi_radians});
-#warn "x line point rotated: [$x_line_point_unshift_unrot->[0], $x_line_point_unshift_unrot->[1]]\n";
-my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
-#warn "m: $m\n";
-my $y1_min_mx1 = $x_line_point_unshift_unrot->[1]-$m*$x_line_point_unshift_unrot->[0];
-my $a =        $self->{ry}  / $y1_min_mx1;
-#warn "a: $a\n";
-my $b = -($m * $self->{rx}) / $y1_min_mx1;
-#warn "b: $b\n";
-my $phase_angle = atan2( $b , $a );
-#warn "phase: $phase_angle (",($phase_angle*(180/$pi)),")\n";
-my $test_theta   = asin(1/ sqrt($a**2 + $b**2)) - $phase_angle;
-my $test_theta_2 = asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi; # + pi by educated trial and error
-if ($self->{sweep_flag}) {while ($test_theta < $self->{theta1}) {$test_theta += 2*$pi;} while ($test_theta_2 < $self->{theta1}) {$test_theta_2 += 2*$pi;}}
-else                     {while ($test_theta > $self->{theta1}) {$test_theta -= 2*$pi;} while ($test_theta_2 > $self->{theta1}) {$test_theta_2 -= 2*$pi;}}
-my $x_result_1 = $self->{rx} * cos($test_theta   + $_*($pi/2)) * cos($self->{phi_radians}) + $self->{ry} * sin($test_theta   + $_*($pi/2)) * -sin($self->{phi_radians}) + $self->{cx};
-my $x_result_2 = $self->{rx} * cos($test_theta_2 + $_*($pi/2)) * cos($self->{phi_radians}) + $self->{ry} * sin($test_theta_2 + $_*($pi/2)) * -sin($self->{phi_radians}) + $self->{cx};
-my $y_result_1 = $self->{rx} * cos($test_theta   + $_*($pi/2)) * sin($self->{phi_radians}) + $self->{ry} * sin($test_theta   + $_*($pi/2)) *  cos($self->{phi_radians}) + $self->{cy};
-my $y_result_2 = $self->{rx} * cos($test_theta_2 + $_*($pi/2)) * sin($self->{phi_radians}) + $self->{ry} * sin($test_theta_2 + $_*($pi/2)) *  cos($self->{phi_radians}) + $self->{cy};
-
-#warn "between?1: $self->{theta1} | $test_theta   | $self->{theta2}\n";
-#warn "between?2: $self->{theta1} | $test_theta_2 | $self->{theta2}\n";
-
-warn "test theta 1 xy: [$x_result_1, $y_result_1][$test_theta]\n";
-warn "test theta 2 xy: [$x_result_2, $y_result_2][$test_theta_2]\n";
-
-=cut
-
-=cut
-
-my @test_ys = map  {$self->evalYofTheta($_->[0]->[0]->($x))} 
-              grep {
-                    #warn "$x >= ",$_->[1]->[0]," && $x < ",$_->[1]->[-1],"\n";
-                    $x >= $_->[1]->[0] && $x < $_->[1]->[-1]
-                   } @{$self->{XtoTLUT}};
-warn "test ys: ",join(', ',@test_ys),"\n";
-
-=cut
 
     my @intersections;
     $x -= $self->{cx};
@@ -531,7 +546,6 @@ warn "test ys: ",join(', ',@test_ys),"\n";
         $intersections[$i] = _rotate2d([0,0],$intersections[$i],$self->{phi_radians});
         $intersections[$i]->[0]+=$self->{cx};
         $intersections[$i]->[1]+=$self->{cy};
-        #warn "intersection: [$intersections[$i]->[0],$intersections[$i]->[1]]\n";
     }
 
     #Now check to see of those intersections are within bounds - within sweep
@@ -563,6 +577,14 @@ warn "test ys: ",join(', ',@test_ys),"\n";
 }
 
 sub F {
+    my ($self, $y) = @_;
+    my @xs = map  {$self->evalXofTheta($_->[0]->[3]->($y))}  # X(t(y))
+             grep {$y >= $_->[4]->[0] && $y < $_->[4]->[-1]} # y is within sub seg's y span
+             @{$self->{XtoTLUT}};                            # in sorted t order
+    #warn "new: \n",join("\n",@xs),"\n";
+    return wantarray ? @xs : (scalar(@xs) ? $xs[0] : undef);
+}
+sub F_old {
     my $self = shift;
     my $y = shift;
     my @intersections;
@@ -639,6 +661,7 @@ sub F {
         }
     }
     @intersections = grep { ($self->{large_arc_flag} && !$self->isWithinSweep($_,$leg1,$leg2)) || (!$self->{large_arc_flag} && $self->isWithinSweep($_,$leg1,$leg2)) } @intersections;
+    #warn "old: \n",join("\n",map {$_->[0]} @intersections),"\n";
     return wantarray ? (map {$_->[0]} @intersections) : $intersections[0]->[0];
 }
 sub point {
