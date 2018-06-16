@@ -65,9 +65,9 @@ my @tangent_angles = map $mp_arc_seg_a->angleTangent(undef,undef,$_), (0,0.1,0.2
 
 is(scalar(grep {defined($_)} @tangent_angles),11,'enough tangent angles');
 
-is_deeply(\@tangent_angles,
-    [
-    1.32388931581687,
+is_deeply([map {sprintf("%.10f",$_)} @tangent_angles],
+    [map {sprintf("%.10f",$_)}
+    (1.32388931581687,
     0.689157557918182,
     0.344472230674316,
     0.100751222746389,
@@ -77,7 +77,7 @@ is_deeply(\@tangent_angles,
     -1.92408338506479,
     -2.5085749151812,
     -2.83197608730836,
-    -3.07065713969832
+    -3.07065713969832)
     ],
     "tangent angles CW"
 );
@@ -86,9 +86,9 @@ is_deeply(\@tangent_angles,
 
 is(scalar(grep {defined($_)} @tangent_angles),11,'enough tangent angles');
 
-is_deeply(\@tangent_angles,
-    [
-    1.82801406372719,
+is_deeply([map {sprintf("%.10f",$_)} @tangent_angles],
+    [map {sprintf("%.10f",$_)}
+    (1.82801406372719,
     0.920131319441548,
     0.373211710344221,
     0.0651101133518759,
@@ -98,7 +98,7 @@ is_deeply(\@tangent_angles,
     -1.7874542551126,
     -2.54297145662636,
     -2.93831708370588,
-    3.08210465266726
+    3.08210465266726)
     ],
     "tangent angles CCW"
 );

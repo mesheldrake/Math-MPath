@@ -853,6 +853,14 @@ sub evalXPrimeofTheta { # this "Theta" means "t" - fix
            * $self->{delta_theta}
     ;
 }
+sub evalXPrimeofArcTheta {
+    my ($self, $arc_theta) = @_;
+    return if !$self->isWithinThetaRange($arc_theta);
+    return (  $self->{rx} * (0 + sprintf("%.14f",-sin($arc_theta))) *  cos($self->{phi_radians})
+            + $self->{ry} * (0 + sprintf("%.14f", cos($arc_theta))) * -sin($self->{phi_radians})
+           )
+    ;
+}
 sub evalYDoublePrimeofTheta { # this "Theta" means "t" - fix
     my $self = shift;
     my $theta = $self->normalizedThetaToArcTheta(shift);
@@ -1137,13 +1145,10 @@ sub angleTangent {
         push @txs, [$t,$self->evalXofTheta($t)];
     }
     foreach my $tx (@txs) {
-        my $dydt = $self->evalYPrimeofTheta($t);
-        my $dxdt = $self->evalXPrimeofTheta($t);
         my $arctheta = $self->theta_of_t($t);
         my $dydtheta = $self->evalYPrimeofArcTheta($arctheta);
-        my $dthetadx = $self->theta_prime_of_x($tx->[1],0);
-        my $tangent = ($dydtheta * $dthetadx);
-        my $tangent_angle = atan2($tangent, $dxdt<=0?-1:1);
+        my $dxdtheta = $self->evalXPrimeofArcTheta($arctheta);
+        my $tangent_angle = -1 * atan2($dydtheta, ($self->{sweep_flag} ? 1:-1) * $dxdtheta);
         push @ret, $tangent_angle;
     }
 
