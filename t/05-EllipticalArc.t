@@ -27,18 +27,20 @@ my @ys = (
          $mp_arc_seg_b->f(-1.5),
          $mp_arc_seg_b->f( 1.5),
          );
-my @ys_old = (
-         $mp_arc_seg_a->f_old(-1.5), 
-         $mp_arc_seg_a->f_old( 1.5),
-         $mp_arc_seg_b->f_old(-1.5),
-         $mp_arc_seg_b->f_old( 1.5),
-         );
+my @ys_expect = (
+    0.577897339560286,
+    0.749036807344408,
+    -0.546964473007376,
+    -0.775174413677617,
+    -0.551684003753151,
+    0.74257556139109
+);
 
 is(scalar(@ys),6,'f(x) result count');
 cmp_bag(
            [map {sprintf("%.10f",$_)} @ys],
-           [map {sprintf("%.10f",$_)} @ys_old],
-           "new f(x) output same as old f(x)"
+           [map {sprintf("%.10f",$_)} @ys_expect],
+           "f(x) output ok"
          );
 
 my @xs = (
@@ -47,18 +49,19 @@ my @xs = (
          $mp_arc_seg_b->F(-0.5),
          $mp_arc_seg_b->F( 0.5),
          );
-my @xs_old = (
-         $mp_arc_seg_a->F_old(-0.5), 
-         $mp_arc_seg_a->F_old( 0.5),
-         $mp_arc_seg_b->F_old(-0.5),
-         $mp_arc_seg_b->F_old( 0.5),
-         );
-
+my @xs_expect = (
+    1.56774310863924,
+    -1.61557183829046,
+    1.8254247910661,
+    -1.87354355902701,
+    1.57402621672775,
+    1.81905910459074
+);
 is(scalar(@xs),6,'F(y) result count');
 cmp_bag(
     [map {sprintf("%.10f",$_)} @xs],
-    [map {sprintf("%.10f",$_)} @xs_old],
-    "new F(y) output same as old F(y)"
+    [map {sprintf("%.10f",$_)} @xs_expect],
+    "F(y) output ok"
 );
 
 my @tangent_angles = map $mp_arc_seg_a->angleTangent(undef,undef,$_), (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0);
