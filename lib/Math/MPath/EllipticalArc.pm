@@ -1143,12 +1143,12 @@ sub angleTangent {
     elsif (defined($t)) {
         push @ts, $t;
     }
+
     foreach my $this_t (@ts) {
         my $arctheta = $self->theta_of_t($this_t);
-        my $dydtheta = $self->evalYPrimeofArcTheta($arctheta);
-        my $dxdtheta = $self->evalXPrimeofArcTheta($arctheta);
-        my $tangent_angle = -1 * atan2($dydtheta, ($self->{sweep_flag} ? 1:-1) * $dxdtheta);
-        push @ret, $tangent_angle;
+        push @ret, -1 * atan2( $self->evalYPrimeofArcTheta($arctheta), 
+                               $self->evalXPrimeofArcTheta($arctheta)
+                               * ($self->{sweep_flag} ? 1:-1) );
     }
 
     return wantarray ? @ret : $ret[0];
