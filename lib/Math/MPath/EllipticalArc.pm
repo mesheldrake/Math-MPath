@@ -1125,27 +1125,26 @@ sub slopeNormal_byTheta {
 sub angleTangent {
     my ($self, $x, $y, $t) = @_;
 
-    my @txs;
+    my @ts;
     my @ret;
 
     if (defined($x)) {
-        push @txs, map [$_->[0]->[0]->($x),$x],
-                   grep {   ($x > $_->[1]->[0]  || $x eq $_->[1]->[0])
-                         && ($x < $_->[1]->[-1] || $x eq $_->[1]->[-1])
-                   } @{$self->{XtoTLUT}};
+        push @ts, map $_->[0]->[0]->($x),
+                  grep {   ($x > $_->[1]->[0]  || $x eq $_->[1]->[0])
+                        && ($x < $_->[1]->[-1] || $x eq $_->[1]->[-1])
+                  } @{$self->{XtoTLUT}};
     }
     elsif (defined($y)) {
-        push @txs, map [$_, $self->evalXofTheta($_)],
-                   map $_->[0]->[3]->($y),
-                   grep {   ($y > $_->[4]->[0]  || $y eq $_->[4]->[0])
-                         && ($y < $_->[4]->[-1] || $y eq $_->[4]->[-1])
+        push @ts, map $_->[0]->[3]->($y),
+                  grep {   ($y > $_->[4]->[0]  || $y eq $_->[4]->[0])
+                        && ($y < $_->[4]->[-1] || $y eq $_->[4]->[-1])
                    } @{$self->{XtoTLUT}};
     }
     elsif (defined($t)) {
-        push @txs, [$t,$self->evalXofTheta($t)];
+        push @ts, $t;
     }
-    foreach my $tx (@txs) {
-        my $arctheta = $self->theta_of_t($t);
+    foreach my $this_t (@ts) {
+        my $arctheta = $self->theta_of_t($this_t);
         my $dydtheta = $self->evalYPrimeofArcTheta($arctheta);
         my $dxdtheta = $self->evalXPrimeofArcTheta($arctheta);
         my $tangent_angle = -1 * atan2($dydtheta, ($self->{sweep_flag} ? 1:-1) * $dxdtheta);
