@@ -1153,69 +1153,6 @@ sub angleTangent {
 
     return wantarray ? @ret : $ret[0];
 }
-
-sub angleTangent_old {
-    my $self = shift;
-    my $x    = shift;
-    my $y    = @_?shift:undef;
-    my $t    = @_?shift:undef;
-
-    #get intersect points
-    my @intersects;
-    if (defined($x)) {my @ys;@ys=$self->f($x);foreach (sort {$a<=>$b} @ys) {push(@intersects,[$x,$_])}}
-    elsif (defined($y)) {my @xs;@xs=$self->F($y);foreach (sort {$a<=>$b} @xs) {push(@intersects,[$_,$y])}}
-    elsif (defined($t)) {push(@intersects,$self->point($t));}
-    #then use the foci calculated in the ellipse setup
-    # and the info here: http://mysite.du.edu/~jcalvert/math/ellipse.htm
-    # to make lines and figure angles to get tangent angle...
-
-    #The tangent line at point P on the ellipse is perpendicular to the line bisecting
-    #the angle between the two lines extending from point P to the two foci of the ellipse. (So the bisector is the normal.)
-    #That angle is given by the arccosine of the dot product over the product of the magnitude of the vectors (lines) between the two lines:
-    # arccos( (line1 dot line2) / (|line1|*|line2|) )
-    #arccos(x) is eqivalent to pi/2 - arcsin(x)
-
-    #really you're calculating an inward pointing normal angle and adding 90 deg to get the tangent
-
-    # ... much later : but you should take sweep_flag into account
-    #    The elliptical arcs here have direction - start point and end point - and a tangent should go in start-to-end direction of elliptical path
-    #    and a normal should point off to the right (left! right in +y points down coord sys, but left in a +y goes up coord sys)
-    #    so added one sweep flag controlled * 1 or -1 in this stuff, and took a negative sign off the cos/sin in slopeNormal function
-    #    and that looks right on my test page
-
-    my @ret;
-    for (my $i=0;$i<@intersects;$i++) {
-        my $line1=[$intersects[$i],$self->{f1}];
-        my $line2=[$intersects[$i],$self->{f2}];
-        my $a1 = atan2($line1->[1]->[1] - $line1->[0]->[1],$line1->[1]->[0] - $line1->[0]->[0]);
-        my $a2 = atan2($line2->[1]->[1] - $line2->[0]->[1],$line2->[1]->[0] - $line2->[0]->[0]);
-        push(@ret,
-            $pi/2 * ($self->{sweep_flag}?-1:1) + #add +/- 90 deg from the normal angle you calculate below to get the tangent
-            $a1 + #angle of the line/vector from point P on ellipse to focus 1
-            (($a2 - $a1)>0 || ($a2 - $a1) eq 0?1:-1) * # hmm..., whether we add or subtract the half angle below from the line1 angle. Is this okay?
-                                                       # in working on new approach, found this caused an anamoly for EllipticalArc->new([-2,0],[2,1],5,1,0,[0,-1],0.00001,1), for t=0.7
-                                                       # think that hack only works always for non-tilted ellipse, but this ellipse had 5degree tilt
-                                                       # Result from new math looks more reasonable, by the numbers.
-
-            0.5 * # this and below calculated half the angle between the two lines
-            ($pi/2 -
-                asin(
-                        (
-                            ($line1->[1]->[0] - $line1->[0]->[0]) * ($line2->[1]->[0] - $line2->[0]->[0])  +
-                            ($line1->[1]->[1] - $line1->[0]->[1]) * ($line2->[1]->[1] - $line2->[0]->[1])
-                        ) /
-                        (
-                            sqrt(($line1->[1]->[1] - $line1->[0]->[1])**2 + ($line1->[1]->[0] - $line1->[0]->[0])**2) *
-                            sqrt(($line2->[1]->[1] - $line2->[0]->[1])**2 + ($line2->[1]->[0] - $line2->[0]->[0])**2)
-                        )
-                )
-            )
-        );
-    }
-    @ret = map {angle_reduce($_)} @ret;
-
-    return wantarray ? @ret : $ret[0];
-}
 sub slopeTangent {
     my @ats = $_[0]->angleTangent($_[1],$_[2],$_[3]);
     my @ret;
