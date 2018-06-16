@@ -16,7 +16,7 @@ sub new {
     $self->{rx} = abs($self->{r}->[0]);
     $self->{ry} = abs($self->{r}->[1]);
     $self->{phi} = shift;
-    #$self->{phi} = ((1000000*$self->{phi}) % (360000000))/1000000; # angle starts as degrees, mod 360, perl svg1.1 implementation notes
+    # angle starts as degrees, mod 360, per svg 1.1 implementation notes
     while ($self->{phi} >  360) {$self->{phi} -= 360;}
     while ($self->{phi} < -360) {$self->{phi} += 360;}
     $self->{phi_radians} = $self->{phi} * ($pi/180);
@@ -211,9 +211,10 @@ sub new {
     my $t_of_x_eqn_1and2 = sub {
         my ($x,$which_theta) = @_;
         my $x_unshift = $x - $self->{cx};
-        my $x_line_point_unshift_unrot = _rotate2d([0,0],[$x_unshift,0],-$self->{phi_radians});
+        my $x_u = $x_unshift * cos(-$self->{phi_radians});
+        my $y_u = $x_unshift * sin(-$self->{phi_radians});
         my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
-        my $y1_min_mx1 = $x_line_point_unshift_unrot->[1]-$m*$x_line_point_unshift_unrot->[0];
+        my $y1_min_mx1 = $y_u-$m*$x_u;
         my $a =        $self->{ry}  / $y1_min_mx1;
         my $b = -($m * $self->{rx}) / $y1_min_mx1;
         my $phase_angle = atan2( $b , $a );
@@ -230,9 +231,10 @@ sub new {
     my $t_of_y_eqn_1and2 = sub {
         my ($y,$which_theta) = @_;
         my $y_unshift = $y - $self->{cy};
-        my $y_line_point_unshift_unrot = _rotate2d([0,0],[0,$y_unshift],-$self->{phi_radians});
+        my $x_u = $y_unshift * -sin(-$self->{phi_radians});
+        my $y_u = $y_unshift *  cos(-$self->{phi_radians});
         my $m = sin(-$self->{phi_radians})/cos(-$self->{phi_radians});
-        my $y1_min_mx1 = $y_line_point_unshift_unrot->[1]-$m*$y_line_point_unshift_unrot->[0];
+        my $y1_min_mx1 = $y_u-$m*$x_u;
         my $a =        $self->{ry}  / $y1_min_mx1;
         my $b = -($m * $self->{rx}) / $y1_min_mx1;
         my $phase_angle = atan2( $b , $a );
@@ -347,6 +349,78 @@ sub new {
 
     return $self;
 }
+
+sub theta_of_x {
+    my ($self,$x,$which_theta) = @_;
+    my $x_unshift = $x - $self->{cx};
+    my $x_u = $x_unshift * cos(-$self->{phi_radians});
+    my $y_u = $x_unshift * sin(-$self->{phi_radians});
+    my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
+    my $y1_min_mx1 = $y_u-$m*$x_u;
+    my $a =        $self->{ry}  / $y1_min_mx1;
+    my $b = -($m * $self->{rx}) / $y1_min_mx1;
+    my $phase_angle = atan2( $b , $a );
+    my $theta  = $which_theta
+               ? asin(1/ sqrt($a**2 + $b**2)) - $phase_angle
+               : asin(1/-sqrt($a**2 + $b**2)) - $phase_angle + $pi # + pi by educated trial and error
+               ;
+    if ($self->{sweep_flag}) {while ($theta < $self->{theta1}) {$theta += 2*$pi;}}
+    else                     {while ($theta > $self->{theta1}) {$theta -= 2*$pi;}}
+    my $t = $self->arcThetaToNormalizedTheta($theta);
+    return $t;
+}
+sub theta_prime_of_x {
+    my ($self,$x,$which) = @_;
+    my $x_unshift = $x - $self->{cx};
+    my $x_u = $x_unshift * cos(-$self->{phi_radians});
+    my $y_u = $x_unshift * sin(-$self->{phi_radians});
+    my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
+    my $z = (($self->{ry}**2+($m*$self->{rx})**2)/((1+$m**2)*sin(-$self->{phi_radians}+atan2(-$m,1))**2));
+    my $theta_prime = ($which?1:-1) / sqrt($z - $x_unshift**2);
+    return $theta_prime;
+}
+sub theta_2prime_of_x {
+    my ($self,$x,$which) = @_;
+    my $x_unshift = $x - $self->{cx};
+    my $x_u = $x_unshift * cos(-$self->{phi_radians});
+    my $y_u = $x_unshift * sin(-$self->{phi_radians});
+    my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
+    my $z = (($self->{ry}**2+($m*$self->{rx})**2)/((1+$m**2)*sin(-$self->{phi_radians}+atan2(-$m,1))**2));
+    my $theta_2prime = ($which?1:-1) * $x_unshift / (sqrt($z - $x_unshift**2)**3);
+    return $theta_prime;
+}
+
+sub t_of_theta {
+    my $self=shift;
+    my $arcTheta=shift;
+    my $num = ($arcTheta - $self->{theta1});
+    return 0 if $num == 0;
+    return $num / $self->{delta_theta};
+}
+
+sub t_prime_of_theta { return 1 / $self->{delta_theta}; }
+
+sub theta_of_t {
+    my $self = shift;
+    my $normalizedTheta = shift;
+    return $self->{theta1} + $self->{delta_theta} * $normalizedTheta;
+}
+
+sub theta_prime_of_t { return $self->{delta_theta}; }
+
+sub t_prime_of_x {
+    my ($self, $x, $which) = @_;
+    # t_prime_of_theta * theta_prime_of_x
+    my $ret = $self->theta_prime_of_x($x,$which) / $self->{delta_theta};
+}
+
+sub t_2prime_of_x {
+    my ($self, $x, $which) = @_;
+    # d_t/d_theta * d_theta/d_x
+    my $ret = $self->theta_2prime_of_x($x,$which) / $self->{delta_theta}
+            ;
+}
+
 
 sub solveXPrimeforThetaBig {return $_[0]->solveXPrimeforTheta($_[1])}
 sub solveYPrimeforThetaBig {return $_[0]->solveYPrimeforTheta($_[1])}
@@ -708,7 +782,7 @@ sub point_offset() {
     return [$x,$y];
 }
 
-sub evalYofTheta {
+sub evalYofTheta { # this "Theta" means "t" - fix
     my $self = shift;
     #print "evalYofTheta     theta: $_[0]\n";
     my $theta = $self->normalizedThetaToArcTheta(shift);
@@ -727,7 +801,7 @@ sub evalYofArcTheta {
     return if !$self->isWithinThetaRange($theta);
     return $self->{rx} * (0 + sprintf("%.14f",cos($theta))) * sin($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",sin($theta))) *  cos($self->{phi_radians}) + $self->{cy};
 }
-sub evalXofTheta {
+sub evalXofTheta { # this "Theta" means "t" - fix
     my $self = shift;
     my $theta = $self->normalizedThetaToArcTheta(shift);
     return if !$self->isWithinThetaRange($theta);
@@ -741,31 +815,65 @@ sub evalXofArcTheta {
     return if !$self->isWithinThetaRange($theta);
     return $self->{rx} * (0 + sprintf("%.14f",cos($theta))) * cos($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",sin($theta))) * -sin($self->{phi_radians}) + $self->{cx};
 }
-sub evalYPrimeofTheta {
+sub evalYPrimeofTheta { # ug. Theta in the function name here is "normalized theta" which I should have called "t" all along, the 0 to 1 paramater
+                        
+                        # TODO: rename the "theta" in all modules that should be "t" to "t"
+                        #       in variables and function names, and anywhere else.
+                        #       Just be really clear everywhere between "t" and "arc_theta"
+
+    my ($self, $t) = @_;
+    my $arc_theta = $self->normalizedThetaToArcTheta($t);
+
+    return if !$self->isWithinThetaRange($arc_theta);
+
+    # Y'(arc_theta) * arc_theta'(t)
+    # but arc_theta'(t) is just the constant delta_theta of the arc
+    return (  $self->{rx} * (0 + sprintf("%.14f",-sin($arc_theta))) * sin($self->{phi_radians})
+            + $self->{ry} * (0 + sprintf("%.14f", cos($arc_theta))) * cos($self->{phi_radians})
+           )
+           * $self->{delta_theta}
+    ;
+
+    # old, wrong:
+    # function implied that it was Y'(t) but returned Y'(arc_theta) instead
+    # return $self->{rx} * (0 + sprintf("%.14f",-sin($arc_theta))) * sin($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",cos($arc_theta))) *  cos($self->{phi_radians});
+}
+sub evalYPrimeofArcTheta {
+    my ($self, $arc_theta) = @_;
+    return if !$self->isWithinThetaRange($arc_theta);
+    return $self->{rx} * (0 + sprintf("%.14f",-sin($arc_theta))) * sin($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",cos($arc_theta))) *  cos($self->{phi_radians});
+}
+sub evalXPrimeofTheta { # this "Theta" means "t" - fix
+    my ($self, $t) = @_;
+    my $arc_theta = $self->normalizedThetaToArcTheta($t);
+    return if !$self->isWithinThetaRange($arc_theta);
+    return (  $self->{rx} * (0 + sprintf("%.14f",-sin($arc_theta))) *  cos($self->{phi_radians})
+            + $self->{ry} * (0 + sprintf("%.14f", cos($arc_theta))) * -sin($self->{phi_radians})
+           )
+           * $self->{delta_theta}
+    ;
+}
+sub evalYDoublePrimeofTheta { # this "Theta" means "t" - fix
     my $self = shift;
     my $theta = $self->normalizedThetaToArcTheta(shift);
     return if !$self->isWithinThetaRange($theta);
-    return $self->{rx} * (0 + sprintf("%.14f",-sin($theta))) * sin($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",cos($theta))) *  cos($self->{phi_radians});
+    return (  $self->{rx} * (0 + sprintf("%.14f",-cos($theta))) * sin($self->{phi_radians})
+            + $self->{ry} * (0 + sprintf("%.14f",-sin($theta))) * cos($self->{phi_radians})
+           )
+           * $self->{delta_theta}
+    ;
 }
-sub evalXPrimeofTheta {
+sub evalXDoublePrimeofTheta { # this "Theta" means "t" - fix
     my $self = shift;
     my $theta = $self->normalizedThetaToArcTheta(shift);
     return if !$self->isWithinThetaRange($theta);
-    return $self->{rx} * (0 + sprintf("%.14f",-sin($theta))) * cos($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",cos($theta))) * -sin($self->{phi_radians});
+    return (  $self->{rx} * (0 + sprintf("%.14f",-cos($theta))) *  cos($self->{phi_radians})
+            + $self->{ry} * (0 + sprintf("%.14f",-sin($theta))) * -sin($self->{phi_radians})
+           )
+           * $self->{delta_theta}
+    ;
 }
-sub evalYDoublePrimeofTheta {
-    my $self = shift;
-    my $theta = $self->normalizedThetaToArcTheta(shift);
-    return if !$self->isWithinThetaRange($theta);
-    return $self->{rx} * (0 + sprintf("%.14f",-cos($theta))) * sin($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",-sin($theta))) *  cos($self->{phi_radians});
-}
-sub evalXDoublePrimeofTheta {
-    my $self = shift;
-    my $theta = $self->normalizedThetaToArcTheta(shift);
-    return if !$self->isWithinThetaRange($theta);
-    return $self->{rx} * (0 + sprintf("%.14f",-cos($theta))) * cos($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",-sin($theta))) * -sin($self->{phi_radians});
-}
-sub solveYforTheta {
+sub solveYforTheta { # this "Theta" means "t", but inside this function "$t" is used for arc_theta! - rename stuff to clarify
     my $self = shift;
     my $y = shift;
     my @xs = $self->F($y);
@@ -795,7 +903,7 @@ sub solveYforTheta {
     }
     return map {$self->arcThetaToNormalizedTheta($_)} grep {$self->isWithinThetaRange($_) && abs($self->evalYofTheta($_) - $y)<0.0000001} @ts;
 }
-sub solveXforTheta {
+sub solveXforTheta { # this "Theta" means "t", but inside this function "$t" is used for arc_theta! - rename stuff to clarify
     my $self = shift;
     my $x = shift;
     my @ys = $self->f($x);
@@ -848,7 +956,7 @@ sub solveXforTheta {
                  && abs($self->evalXofArcTheta($_) - $x)<0.0000001
            } @ts;
 }
-sub solveYPrimeforTheta {
+sub solveYPrimeforTheta { # this "Theta" means "t", but inside this function "$t" is used for arc_theta! - rename stuff to clarify
     my $self = shift;
     my $yp = shift;
     #first of all, that slope would be this slope, if ellipse were "unrotated":
@@ -872,7 +980,7 @@ sub solveYPrimeforTheta {
     my $other_t3=$other_t + (($other_t>0 || $other_t eq 0)?-1:1) * 2*$pi;
     return map {$self->arcThetaToNormalizedTheta($_)} grep {$self->isWithinThetaRange($_)} ($t,$other_t,$other_t2,$other_t3);
 }
-sub solveXPrimeforTheta {
+sub solveXPrimeforTheta { # this "Theta" means "t", but inside this function "$t" is used for arc_theta! - rename stuff to clarify
     my $self = shift;
     my $xp = shift;
     #first of all, that slope would be this slope, if ellipse were "unrotated":
@@ -988,62 +1096,71 @@ sub getFeet {
     }
     return @feet;
 }
-sub angleTangent_byTheta {
-    my $self = shift;
-    my $theta = shift;
-    return if !$self->isWithinThetaRange($self->normalizedThetaToArcTheta($theta));
-    my @ret=$self->angleTangent(undef,undef,$theta);
-    return wantarray ? @ret : $ret[0];
+sub angleTangent_byTheta { # this "Theta" means "t" - rename stuff to clarify - this and below, and etc. everywhere
+    my ($self,$t) = @_;
+    return $self->angleTangent(undef,undef,$t);
     }
 sub angleNormal_byTheta {
-    my $self = shift;
-    my $theta = shift;
-    return if !$self->isWithinThetaRange($self->normalizedThetaToArcTheta($theta));
-    my @ret=$self->angleNormal(undef,undef,$theta);
-    return wantarray ? @ret : $ret[0];
+    my ($self,$t) = @_;
+    return $self->angleNormal(undef,undef,$t);
     }
 sub slopeTangent_byTheta {
-    my $self = shift;
-    my $theta = shift;
-    return if !$self->isWithinThetaRange($self->normalizedThetaToArcTheta($theta));
-    my $yp=$self->evalYPrimeofTheta($theta);
-    my $xp=$self->evalXPrimeofTheta($theta);
-    if ($xp eq '0') {return (($yp < 0)?'-':'+').'inf';}
-    if ($yp eq '0') {return (($xp < 0)?'-':'+').'0';}
-    else {
-        return $yp/$xp;
-    }
+    my ($self,$t) = @_;
+    return $self->slopeTangent(undef,undef,$t);
 }
 
 sub slopeNormal_byTheta {
-    my $self = shift;
-    my $theta = shift;
-    return if !$self->isWithinThetaRange($self->normalizedThetaToArcTheta($theta));
-    my $slopeTangent = $self->slopeTangent_byTheta($theta);
-    if ($slopeTangent =~ /([\-\+]?)inf$/i) {
-        my $sign = '';
-        if (length($1)) {if ($1 eq '-') {$sign='+';} else {$sign='-';}}
-        return $sign.'0';
-    }
-    elsif ($slopeTangent =~ /^([\-\+]?)0$/) {
-        my $sign = '';
-        if (length($1)) {if ($1 eq '-') {$sign='+';} else {$sign='-';}}
-        return $sign.'inf';
-    }
-    else {
-        return -1/$slopeTangent;
-    }
+    my ($self,$t) = @_;
+    return $self->slopeNormal(undef,undef,$t);
 }
+
 sub angleTangent {
+    my ($self, $x, $y, $t) = @_;
+
+    my @txs;
+    my @ret;
+
+    if (defined($x)) {
+        push @txs, map [$_->[0]->[0]->($x),$x],
+                   grep {   ($x > $_->[1]->[0]  || $x eq $_->[1]->[0])
+                         && ($x < $_->[1]->[-1] || $x eq $_->[1]->[-1])
+                   } @{$self->{XtoTLUT}};
+    }
+    elsif (defined($y)) {
+        push @txs, map [$_, $self->evalXofTheta($_)],
+                   map $_->[0]->[3]->($y),
+                   grep {   ($y > $_->[4]->[0]  || $y eq $_->[4]->[0])
+                         && ($y < $_->[4]->[-1] || $y eq $_->[4]->[-1])
+                   } @{$self->{XtoTLUT}};
+    }
+    elsif (defined($t)) {
+        push @txs, [$t,$self->evalXofTheta($t)];
+    }
+    foreach my $tx (@txs) {
+        my $dydt = $self->evalYPrimeofTheta($t);
+        my $dxdt = $self->evalXPrimeofTheta($t);
+        my $arctheta = $self->theta_of_t($t);
+        my $dydtheta = $self->evalYPrimeofArcTheta($arctheta);
+        my $dthetadx = $self->theta_prime_of_x($tx->[1],0);
+        my $tangent = ($dydtheta * $dthetadx);
+        my $tangent_angle = atan2($tangent, $dxdt<=0?-1:1);
+        push @ret, $tangent_angle;
+    }
+
+    return wantarray ? @ret : $ret[0];
+}
+
+sub angleTangent_old {
     my $self = shift;
     my $x    = shift;
     my $y    = @_?shift:undef;
-    my $theta= @_?shift:undef;
+    my $t    = @_?shift:undef;
+
     #get intersect points
     my @intersects;
     if (defined($x)) {my @ys;@ys=$self->f($x);foreach (sort {$a<=>$b} @ys) {push(@intersects,[$x,$_])}}
     elsif (defined($y)) {my @xs;@xs=$self->F($y);foreach (sort {$a<=>$b} @xs) {push(@intersects,[$_,$y])}}
-    elsif (defined($theta)) {push(@intersects,$self->point($theta));}
+    elsif (defined($t)) {push(@intersects,$self->point($t));}
     #then use the foci calculated in the ellipse setup
     # and the info here: http://mysite.du.edu/~jcalvert/math/ellipse.htm
     # to make lines and figure angles to get tangent angle...
@@ -1072,6 +1189,10 @@ sub angleTangent {
             $pi/2 * ($self->{sweep_flag}?-1:1) + #add +/- 90 deg from the normal angle you calculate below to get the tangent
             $a1 + #angle of the line/vector from point P on ellipse to focus 1
             (($a2 - $a1)>0 || ($a2 - $a1) eq 0?1:-1) * # hmm..., whether we add or subtract the half angle below from the line1 angle. Is this okay?
+                                                       # in working on new approach, found this caused an anamoly for EllipticalArc->new([-2,0],[2,1],5,1,0,[0,-1],0.00001,1), for t=0.7
+                                                       # think that hack only works always for non-tilted ellipse, but this ellipse had 5degree tilt
+                                                       # Result from new math looks more reasonable, by the numbers.
+
             0.5 * # this and below calculated half the angle between the two lines
             ($pi/2 -
                 asin(
@@ -1088,15 +1209,35 @@ sub angleTangent {
         );
     }
     @ret = map {angle_reduce($_)} @ret;
+
     return wantarray ? @ret : $ret[0];
 }
-sub secondDerivative {
+sub slopeTangent {
+    my @ats = $_[0]->angleTangent($_[1],$_[2],$_[3]);
+    my @ret;
+    for (my $i=0;$i<@ats;$i++) {
+        push(@ret, sin($ats[$i])/cos($ats[$i]));
+    } 
+    return wantarray ? @ret : $ret[0];
+}
+sub slopeNormal  {
+    my @ats = $_[0]->angleTangent($_[1],$_[2],$_[3]);
+    my @ret;
+    for (my $i=0;$i<@ats;$i++) {
+        push(@ret, -cos($ats[$i])/sin($ats[$i]));
+    }
+    return wantarray ? @ret : $ret[0];
+}
+sub angleNormal  {
+    my @ret = map {$_ + $pi/2} $_[0]->angleTangent($_[1],$_[2],$_[3]);
+    @ret = map {angle_reduce($_)} @ret;
+    return wantarray ? @ret : $ret[0];
+}
+
+sub secondDerivative { #think we might call it something else. follow what you did/do in cubic Bezier stuff
     my $self = shift;
     die "Need to work out second derivative with respect to x for elliptical arc when rx != ry";
 }
-sub slopeTangent {my @ats;@ats=$_[0]->angleTangent($_[1],$_[2],$_[3]);my @ret;for (my $i=0;$i<@ats;$i++) {push(@ret, sin($ats[$i])/cos($ats[$i]))} return wantarray ? @ret : $ret[0];}
-sub slopeNormal  {my @ats;@ats=$_[0]->angleTangent($_[1],$_[2],$_[3]);my @ret;for (my $i=0;$i<@ats;$i++) {push(@ret, -cos($ats[$i])/sin($ats[$i]))} return wantarray ? @ret : $ret[0];}
-sub angleNormal  {my @ret = (map {$_ + $pi/2} $_[0]->angleTangent($_[1],$_[2],$_[3]));@ret = map {angle_reduce($_)} @ret;return wantarray ? @ret : $ret[0];}
 
 sub isWithinSweep {
     my $self = shift;

@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 4;
+use Test::More tests => 8;
 use Test::Deep;
 
 use Math::MPath;
@@ -56,9 +56,51 @@ my @xs_old = (
 
 is(scalar(@xs),6,'F(y) result count');
 cmp_bag(
-           [map {sprintf("%.10f",$_)} @xs],
-           [map {sprintf("%.10f",$_)} @xs_old],
-           "new F(y) output same as old F(y)"
-         );
+    [map {sprintf("%.10f",$_)} @xs],
+    [map {sprintf("%.10f",$_)} @xs_old],
+    "new F(y) output same as old F(y)"
+);
+
+my @tangent_angles = map $mp_arc_seg_a->angleTangent(undef,undef,$_), (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0);
+
+is(scalar(grep {defined($_)} @tangent_angles),11,'enough tangent angles');
+
+is_deeply(\@tangent_angles,
+    [
+    1.32388931581687,
+    0.689157557918182,
+    0.344472230674316,
+    0.100751222746389,
+    -0.138348898601983,
+    -0.46364760900081,
+    -1.05283401122026,
+    -1.92408338506479,
+    -2.5085749151812,
+    -2.83197608730836,
+    -3.07065713969832
+    ],
+    "tangent angles CW"
+);
+
+@tangent_angles = map $mp_arc_seg_b->angleTangent(undef,undef,$_), (0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0);
+
+is(scalar(grep {defined($_)} @tangent_angles),11,'enough tangent angles');
+
+is_deeply(\@tangent_angles,
+    [
+    1.82801406372719,
+    0.920131319441548,
+    0.373211710344221,
+    0.0651101133518759,
+    -0.18079531154284,
+    -0.46364760900081,
+    -0.931091113117833,
+    -1.7874542551126,
+    -2.54297145662636,
+    -2.93831708370588,
+    3.08210465266726
+    ],
+    "tangent angles CCW"
+);
 
 1;
