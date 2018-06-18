@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 20;
+use Test::More tests => 21;
 
 use Math::MPath;
 
@@ -71,6 +71,44 @@ ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
 ok(    abs($intersections[0]->[0] - 14.9634) < 0.0001
     && abs($intersections[0]->[1] -  5.8028) < 0.0001
 );
+
+## AoAo ## two offset elliptical arcs, one intersection
+@intersections = Math::MPath::Intersections::intersect_AoAo(
+    Math::MPath::EllipticalArc->new([10,10],[30,31],0,0,0,[20, 1],0.00001,1),
+    Math::MPath::EllipticalArc->new([ 9, 1],[30,31],0,0,0,[21,11],0.00001,1),
+    0.3,0.2
+);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(    abs($intersections[0]->[0] - 14.5850) < 0.0001
+    && abs($intersections[0]->[1] -  7.2472) < 0.0001
+);
+
+
+
+
+=cut
+
+# currently working on this one
+## AoAo ## two offset elliptical arcs, two intersections within one sub section
+diag("AoAo intersection pair");
+@intersections = Math::MPath::Intersections::intersect_AoAo(
+    Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1),
+    Math::MPath::EllipticalArc->new([0,6.0],[30,31],0,0,1,[30.0,29.0],0.00001,1),
+    0.3,0.2
+);
+diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
+    && abs($intersections[0]->[1] -  9.9952) < 0.0001
+);
+ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
+    && abs($intersections[1]->[1] - 22.8527) < 0.0001
+);
+
+=cut
+
+
+
+
 
 ## CL ##
 $mp1 = Math::MPath->newlite('M10,10C13,10,16,8,20,1',0.00001);

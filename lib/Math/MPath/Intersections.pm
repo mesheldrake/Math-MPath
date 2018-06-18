@@ -231,6 +231,10 @@ sub intersect_AL {
     return @ret;
 }
 
+# optimized circle-circle intersection case
+# don't know whether it's actually better than the general elliptical arc case
+# at this point, but should revisit this math and improve with new features
+# of elliptical arc code if possible
 sub intersect_A1A1 {
     my ($arc1, $arc2, $wantThetas) = @_;
 
@@ -620,6 +624,246 @@ sub intersect_A1oLo {
     return intersect_AL($arc_off, $line_off, $wantThetas, $lineIsSelf);
 }
 
+sub intersect_AoAo {
+
+    # Adaptation of CoCo (offset Bezier curve intersections), 
+    # for offset elliptical arcs.
+    
+    # lutA and lutB optional - used to re-call this function in the
+    # two intersection case
+
+    my ($arcA, $arcB, $offA, $offB, $lutA, $lutB) = @_;
+
+    my $XtoTLUT_A = $lutA ? $lutA : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$arcA->{XtoTLUT}}];
+    my $XtoTLUT_B = $lutB ? $lutB : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$arcB->{XtoTLUT}}];
+
+    # assume any provided LUTs already contain offset Xs in their x range entries
+    # otherwise we need to do that now for the LUT copies we made
+    if (!defined($lutA)) {
+        foreach my $span (@{$XtoTLUT_A}) {
+            $span->[1]->[0]  = $arcA->X_offset($span->[2]->[0] ,$offA,$span->[0]->[1],$span->[3]);
+            $span->[1]->[-1] = $arcA->X_offset($span->[2]->[-1],$offA,$span->[0]->[1],$span->[3]);
+        }
+    }
+
+    if (!defined($lutB)) {
+        foreach my $span (@{$XtoTLUT_B}) {
+            $span->[1]->[0]  = $arcB->X_offset($span->[2]->[0] ,$offB,$span->[0]->[1],$span->[3]);
+            $span->[1]->[-1] = $arcB->X_offset($span->[2]->[-1],$offB,$span->[0]->[1],$span->[3]);
+        }
+    }
+
+    my @ret;
+
+    #my %aseen;
+
+    my $offintloopcnt=0;
+
+    foreach my $spanA (@{$XtoTLUT_A}) {
+
+        #$aseen{$spanA}={} if !$aseen{$spanA};
+
+        foreach my $spanB (@{$XtoTLUT_B}) {
+
+            # avoid duplicate runs
+            # TODO redo this logic
+
+            # skip if x spans don't overlap
+            next if ($spanA->[1]->[0] > $spanB->[1]->[-1]);
+            next if ($spanB->[1]->[0] > $spanA->[1]->[-1]);
+
+            # x clipping to minimum x span that's valid for both lut entry spans
+
+            my $spanx = [];
+            my $tsA = [];
+            my $tsB = [];
+
+            # the x clipping is more involved with these offset curves
+
+            if ($spanA->[1]->[0] > $spanB->[1]->[0]) {
+                $spanx->[0] = $spanA->[1]->[0];
+                $tsA->[0] = $spanA->[2]->[0];
+                $tsB->[0] = $arcB->t_from_xoff($spanx->[0],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+
+            }
+            else {
+                $spanx->[0] = $spanB->[1]->[0];
+                $tsB->[0] = $spanB->[2]->[0];
+                $tsA->[0] = $arcA->t_from_xoff($spanx->[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+
+            }
+            if ($spanA->[1]->[-1] < $spanB->[1]->[-1]) {
+                $spanx->[1] = $spanA->[1]->[-1];
+                $tsA->[1] = $spanA->[2]->[-1];
+                $tsB->[1] = $arcB->t_from_xoff($spanx->[1],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+
+            }
+            else {
+                $spanx->[1] = $spanB->[1]->[-1];
+                $tsB->[1] = $spanB->[2]->[-1];
+                $tsA->[1] = $arcA->t_from_xoff($spanx->[1],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+
+            }
+
+            my $ysA = [$arcA->Y_offset($tsA->[0],$offA,$spanA->[0]->[1],$spanA->[3]),$arcA->Y_offset($tsA->[1],$offA,$spanA->[0]->[1],$spanA->[3])];
+            my $ysB = [$arcB->Y_offset($tsB->[0],$offB,$spanB->[0]->[1],$spanB->[3]),$arcB->Y_offset($tsB->[1],$offB,$spanB->[0]->[1],$spanB->[3])];
+
+            #warn "\nspanx:\n $spanx->[0],$spanx->[1]\n";
+            #warn "ts:\n $tsA->[0],$tsA->[1]\n $tsB->[0],$tsB->[1]\n";
+            #warn "ys:\n $ysA->[0],$ysA->[1]\n $ysB->[0],$ysB->[1]\n";
+
+            # one intersection case, similar to how you'd test for crossing line segments
+            if    (($ysA->[0] > $ysB->[0] && $ysA->[0] ne $ysB->[0] &&
+                    $ysA->[1] < $ysB->[1] && $ysA->[1] ne $ysB->[1]   ) ||
+                   ($ysA->[0] < $ysB->[0] && $ysA->[0] ne $ysB->[0] &&
+                    $ysA->[1] > $ysB->[1] && $ysA->[1] ne $ysB->[1]   )
+                  ) {
+
+                my $findintarcarc = sub {
+                    # need Yoff1(t1(xoff)) - Yoff2(t2(xoff))
+                    my $t1 = $arcA->t_from_xoff($_[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+                    my $t2 = $arcB->t_from_xoff($_[0],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+
+                    my $yoff1 = $arcA->Y_offset($t1,$offA,$spanA->[0]->[1],$spanA->[3]);
+                    my $yoff2 = $arcB->Y_offset($t2,$offB,$spanB->[0]->[1],$spanB->[3]);
+
+                    return $yoff2 - $yoff1;
+                };
+
+                my $bounds_xoff = [$spanx->[0],$spanx->[1]];
+                my ($int_xoff,$msg)=BrentsMethod($findintarcarc,$bounds_xoff,0.00001,undef,'subArcOff-subArcOff intersection finding');
+
+                if ($msg) { warn "arcoffint message: $msg\n"; }
+                else {
+                    my $t1 = $arcA->t_from_xoff($int_xoff,$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+                    my $intersection_x = $arcA->X_offset($t1,$offA,$spanA->[0]->[1],$spanA->[3]);
+                    my $intersection_y = $arcA->Y_offset($t1,$offA,$spanA->[0]->[1],$spanA->[3]);
+                    my $x = $arcA->evalXofTheta($t1);
+                    $int_t_A = $spanA->[0]->[0]->($x);
+                    $int_t_B = $spanB->[0]->[0]->($x);
+                    #warn "GOT THE ONE INTERSECTION: [$intersection_x,$intersection_y,$int_t_A,$int_t_B]\n";
+                    push @ret, [$intersection_x,$intersection_y,$int_t_A,$int_t_B];
+                }
+
+            }
+            # catch any endpoint overlap "intersections"
+            elsif (    $ysA->[0] eq $ysB->[0] || $ysA->[1] eq $ysB->[1]
+                    || $ysA->[1] eq $ysB->[0] || $ysA->[0] eq $ysB->[1]
+                  ) {
+                # what is the policy on this?
+                # when checking for self intersections, def don't want these
+                # but for diff bezs, these could sometimes be legit intersections
+                #push @ret, ["xoverlap","yoverlap"] if $bezA != $bezB;
+            }
+            # the zero or two intersection case
+            else {
+
+                warn "failed to find one offset intersection when a special LUT was provided\n" if defined($lutA) || defined($lutB);
+                next if defined($lutA) || defined($lutB);
+
+                # zero intersections if y ranges don't overlap
+                my ($lowyA,$highyA) = ($ysA->[0]<$ysA->[1]) ? (@$ysA) : (reverse @$ysA);
+                my ($lowyB,$highyB) = ($ysB->[0]<$ysB->[1]) ? (@$ysB) : (reverse @$ysB);
+                next if ($lowyA > $highyB);
+                next if ($lowyB > $highyA);
+
+                # zero or two intersections
+
+                # Similar to offset Bezier approach
+                #
+                # root finding function to test for zero or two, then find the split point for two
+                #
+                # g(t1) = [offsetY2(t2_of_xoff(xoff)) - offsetY1(t1_of_xoff(xoff))]'
+
+                my $y_diff_prime = sub {
+
+                    # need to adapt this for offset elliptical arcs
+
+                    my $tA = $arcA->t_from_xoff($_[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+                    my $tB = $arcB->t_from_xoff($_[0],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+
+die "CURRENTLY WORKING ON AoAo ZERO OR TWO INTERSECTION CASE";
+
+#                    my $nA = $arcA->F_prime(undef,$tA);
+#                    my $nB = $arcB->F_prime(undef,$tB);
+
+#                    my $nA_prime = $arcA->F_2prime(undef,$tA);
+#                    my $nB_prime = $arcB->F_2prime(undef,$tB);
+
+#                    my $YPrimeA = $arcA->bezierEvalYPrimeofT($tA);
+#                    my $YPrimeB = $arcB->bezierEvalYPrimeofT($tB);
+
+#                    my $yoffset_primeA = -($offA/2.0) * 1/(sqrt($nA**2 + 1)**3) * 2*$nA * $nA_prime;
+#                    my $yoffset_primeB = -($offB/2.0) * 1/(sqrt($nB**2 + 1)**3) * 2*$nB * $nB_prime;
+
+#                    my $YoffPrimeA = ($YPrimeA + $yoffset_primeA);
+#                    my $YoffPrimeB = ($YPrimeB + $yoffset_primeB);
+
+                    my $ret = $YoffPrimeB - $YoffPrimeA;
+
+                    return $ret;
+
+                };
+
+                my $at_start = $y_diff_prime->($spanx->[0]);
+                my $at_end   = $y_diff_prime->($spanx->[1]);
+
+                #warn "ydiffprime start, end: [$spanx->[0]] $at_start, [$spanx->[1]] $at_end\n";
+
+                if ($at_start > 0 && $at_end < 0 || $at_start < 0 && $at_end > 0) {
+
+                    my $bounds_xoffA = [$spanx->[0],$spanx->[1]];
+                    my ($split_xoff_A,$msg)=FalsePosition($y_diff_prime,$bounds_xoffA,0.00001,(($bounds_xoffA->[1]-$bounds_xoffA->[0])/2),'subArc-subArc intersection finding - find pair split parameter');
+
+                    warn "split find fail msg: $msg\n" if $msg;
+
+                    my $span_split_x = $split_xoff_A;
+
+                    #warn "split xoff: $span_split_x\n";
+
+                    $split_t_A = $arcA->t_from_xoff($span_split_x,$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+                    $split_t_B = $arcB->t_from_xoff($span_split_x,$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+
+                    # set up new LUTs to pass to a re-call of this intersection sub
+                    # so re-call run will have proper x bounds to find each of
+                    # the intersection pair individually.
+
+                    my $sub_t_span_1_A = [$tsA->[0], $split_t_A];
+                    my $sub_t_span_2_A = [$split_t_A, $tsA->[1]];
+                    my $sub_t_span_1_B = [$tsB->[0], $split_t_B];
+                    my $sub_t_span_2_B = [$split_t_B, $tsB->[1]];
+
+                    #warn "re-call 1\n";
+                    #warn "  [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]]\n";
+                    #warn "  [[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?$sub_t_span_2_B:$sub_t_span_1_B, $spanB->[3]]]\n";
+                    my @int1 = intersect_AoAo($arcA,$arcB,$offA,$offB,
+                                                 [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]],
+                                                 [[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?$sub_t_span_2_B:$sub_t_span_1_B, $spanB->[3]]]
+                                                 );
+                    #warn "re-call 2\n";
+                    #warn "  [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]]\n";
+                    #warn "  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]\n";
+
+                    my @int2 = intersect_AoAo($arcA,$arcB,$offA,$offB,
+                                                 [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]],
+                                                 [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
+                                                 );
+
+                    push @ret, @int1, @int2;
+                }
+                else {
+                    #warn "no pair";
+                }
+
+            }
+        }
+    }
+    return @ret;
+}
+
+# This is the first-worked-out reference for how to do offset curve intersections
+# when you have curves decomposed into monotonic subsections, with one-to-one
+# t(x) functions for each subsection.
 sub intersect_CoCo {
 
     # The first attempt at adapting bez_bez_intersect() for offset beziers

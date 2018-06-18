@@ -231,7 +231,6 @@ sub new {
         my $t = $self->t_of_theta($theta);
         return $t;
     };
-
     my $t_of_y_eqn_1and2 = sub {
         my ($y,$which_theta) = @_;
         my $y_unshift = $y - $self->{cy};
@@ -250,6 +249,18 @@ sub new {
         else                     {while ($theta > $self->{theta1}) {$theta -= 2*$pi;}}
         my $t = $self->t_of_theta($theta);
         return $t;
+    };
+
+    my $t_prime_of_x_eqn_1and2 = sub {
+        my ($x,$which) = @_;
+        my $x_unshift = $x - $self->{cx};
+        my $x_u = $x_unshift * cos(-$self->{phi_radians});
+        my $y_u = $x_unshift * sin(-$self->{phi_radians});
+        my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
+        my $z = (($self->{ry}**2+($m*$self->{rx})**2)/((1+$m**2)*sin(-$self->{phi_radians}+atan2(-$m,1))**2));
+        my $theta_prime = ($which?1:-1) / sqrt($z - $x_unshift**2);
+        my $t_prime = $theta_prime / $self->{delta_theta};
+        return $t_prime;
     };
 
     for (my $i = 1; $i < @div_ts; $i++) {
@@ -277,13 +288,16 @@ sub new {
         if ($angle_mid > 0) {
             if ($angle_mid < $pi/2) { # quadrant 1
                 push @tx_eqns, (
-                    sub {
+                    sub {#t(x)
                          #warn "(eq a)\n";
                          return $t_of_x_eqn_1and2->($_[0],    0    );
                     },
-                    undef,
-                    undef,
-                    sub {
+                    sub {#t_prime(x)
+                        warn "(eq a)\n";
+                        return $t_prime_of_x_eqn_1and2->($_[0],    0    );
+                    },
+                    undef,#t_2prime(x)
+                    sub {#t(y)
                          #warn "(eq a)\n";
                          return $t_of_y_eqn_1and2->($_[0],    1    );
                     }
@@ -295,7 +309,10 @@ sub new {
                          #warn "(eq b)\n";
                          return $t_of_x_eqn_1and2->($_[0],    1    );
                     },
-                    undef,
+                    sub {#t_prime(x)
+                        warn "(eq b)\n";
+                        return $t_prime_of_x_eqn_1and2->($_[0],    1    );
+                    },
                     undef,
                     sub {
                          #warn "(eq b)\n";
@@ -312,7 +329,10 @@ sub new {
                          #warn "(eq c)\n";
                          return $t_of_x_eqn_1and2->($_[0],    1    );
                     },
-                    undef,
+                    sub {#t_prime(x)
+                        warn "(eq c)\n";
+                        return $t_prime_of_x_eqn_1and2->($_[0],    1    );
+                    },
                     undef,
                     sub {
                          #warn "(eq c)\n";
@@ -326,7 +346,10 @@ sub new {
                          #warn "(eq d)\n";
                          return $t_of_x_eqn_1and2->($_[0],    0    );
                     },
-                    undef,
+                    sub {#t_prime(x)
+                        warn "(eq d)\n";
+                        return $t_prime_of_x_eqn_1and2->($_[0],    0    );
+                    },
                     undef,
                     sub {
                          #warn "(eq d)\n";
@@ -370,8 +393,7 @@ sub theta_of_x {
                ;
     if ($self->{sweep_flag}) {while ($theta < $self->{theta1}) {$theta += 2*$pi;}}
     else                     {while ($theta > $self->{theta1}) {$theta -= 2*$pi;}}
-    my $t = $self->t_of_theta($theta);
-    return $t;
+    return $theta;
 }
 sub theta_prime_of_x {
     my ($self,$x,$which) = @_;
@@ -619,6 +641,48 @@ sub point_offset() {
     $x += cos($a) * $distance;
     $y += sin($a) * $distance;
     return [$x,$y];
+}
+
+sub X_offset {
+    my ($self, $t, $distance) = @_;
+    my $x = $self->evalXofTheta($t);
+    my $a = $self->angleNormal_byTheta($t);
+    $x += cos($a) * $distance;
+    return $x;
+}
+sub Y_offset {
+    my ($self, $t, $distance) = @_;
+    my $y = $self->evalYofTheta($t);
+    my $a = $self->angleNormal_byTheta($t);
+    $y += sin($a) * $distance;
+    return $y;
+}
+
+sub t_from_xoff {
+    my ($self, $xoff, $distance, $t_bounds, $tprimeofxfunc) = @_;
+
+    # solve for the arc theta where X_offset($distance) == $xoff
+    # then to t_of_theta(theta) of course
+    # you should pass in the subseg LUT entry stuff if you have it; otherwise, could cycle through all in LUT looking for solutions.
+    # this is likely analytic. should work out on paper.
+    # Tried to work it out. Seemed close. But couldn't finish.
+    # So root finding approach for now.
+
+    my $rfsub = sub {
+        my $t = $_[0];
+        my $x = $self->evalXofTheta($t);
+        # my $offset_x = $x - $self->evalYPrimeofTheta($t) * $tprimeofxfunc->($x) * $distance;
+        # above and below are close, but not the same. Should figure out why. Probably tprimeofxfunc from LUT is wrong?
+        my $offset_x = $x + cos($self->angleNormal_byTheta($t)) * $distance;
+
+        # warn "[$t][$xoff] $offset_x = $x + ",cos($self->angleNormal_byTheta($t)) * $distance,"\n";
+
+        return $offset_x - $xoff;
+    };
+    $t_bounds = [$t_bounds->[1], $t_bounds->[0]] if $t_bounds->[0] > $t_bounds->[1];
+    my ($t, $msg) = BrentsMethod($rfsub,$t_bounds,0.000001,undef,'finding t_from_xoff()');
+    die "t_from_xoff() root find fail: $msg\n" if $msg;
+    return $t;
 }
 
 sub evalYofTheta { # this "Theta" means "t" - fix
