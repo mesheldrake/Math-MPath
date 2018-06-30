@@ -174,6 +174,7 @@ sub new {
                      $toAcos = -1.0 if $toAcos < -1;
 
                      #      this is arccosine
+                     #warn "thofy: ",atan2(sqrt(1.0 - $toAcos * $toAcos),$toAcos),"\n";;
                      return atan2(sqrt(1.0 - $toAcos * $toAcos),$toAcos);
 
     };
@@ -245,7 +246,7 @@ my $x=$_[0];
                        ( (3*$self->{GdE} - $self->{FdE}**2)/9.0 )**3 #   Q^3
                      + (                                               # + R^2
                         # R
-                        (   9.0  * $self->{FdA}*$self->{GdE}
+                        (   9.0  * $self->{FdE}*$self->{GdE}
                           - 27.0 *
 
                                  #C
@@ -305,10 +306,10 @@ my $y=$_[0];
     my $eqn_3 = sub {return -($self->{BdA}/3) + ( -((-($R->($_[0])+$sqrtD->($_[0])))**(1/3)) + (-(-($R->($_[0])-$sqrtD->($_[0])))**(1/3)) );};
     my $eqn_4 = sub {return -($self->{BdA}/3) + (  (( ($R->($_[0])+$sqrtD->($_[0])))**(1/3)) + (-(-($R->($_[0])-$sqrtD->($_[0])))**(1/3)) );};
 
-    my $eqn_1_ofy = sub {return -($self->{FdA}/3) + (  (( ($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + ( ( ($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );};
-    my $eqn_2_ofy = sub {return -($self->{FdA}/3) + (  (( ($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + (-(-($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );}; # yes 2 and 4 are the same
-    my $eqn_3_ofy = sub {return -($self->{FdA}/3) + ( -((-($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + (-(-($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );};
-    my $eqn_4_ofy = sub {return -($self->{FdA}/3) + (  (( ($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + (-(-($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );};
+    my $eqn_1_ofy = sub {return -($self->{FdE}/3) + (  (( ($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + ( ( ($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );};
+    my $eqn_2_ofy = sub {return -($self->{FdE}/3) + (  (( ($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + (-(-($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );}; # yes 2 and 4 are the same
+    my $eqn_3_ofy = sub {return -($self->{FdE}/3) + ( -((-($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + (-(-($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );};
+    my $eqn_4_ofy = sub {return -($self->{FdE}/3) + (  (( ($R_ofy->($_[0])+$sqrtD_ofy->($_[0])))**(1/3)) + (-(-($R_ofy->($_[0])-$sqrtD_ofy->($_[0])))**(1/3)) );};
 
     #my $eqn_8 = sub {return one of above + ($self->{BdA}/3) then /2, then negated, then minus - ($self->{BdA}/3) } # the D eq 0 duplicate real root
 
@@ -375,13 +376,13 @@ my $y=$_[0];
 
 
 
-    my $eqn_5 = sub {return 2.0*sqrt(-((3.0*$self->{CdA} - $self->{BdA}**2)/9.0)) * cos( ($theta->($_[0])          ) / 3.0) - $self->{BdA}/3.0};
-    my $eqn_6 = sub {return 2.0*sqrt(-((3.0*$self->{CdA} - $self->{BdA}**2)/9.0)) * cos( ($theta->($_[0]) + $twopi ) / 3.0) - $self->{BdA}/3.0};
-    my $eqn_7 = sub {return 2.0*sqrt(-((3.0*$self->{CdA} - $self->{BdA}**2)/9.0)) * cos( ($theta->($_[0]) + $fourpi) / 3.0) - $self->{BdA}/3.0};
+    my $eqn_5  = sub {return 2.0*sqrt(-((3.0*$self->{CdA} - $self->{BdA}**2)/9.0)) * cos( ($theta->($_[0])              ) / 3.0) - $self->{BdA}/3.0};
+    my $eqn_6  = sub {return 2.0*sqrt(-((3.0*$self->{CdA} - $self->{BdA}**2)/9.0)) * cos( ($theta->($_[0])     + $twopi ) / 3.0) - $self->{BdA}/3.0};
+    my $eqn_7  = sub {return 2.0*sqrt(-((3.0*$self->{CdA} - $self->{BdA}**2)/9.0)) * cos( ($theta->($_[0])     + $fourpi) / 3.0) - $self->{BdA}/3.0};
 
-    my $eqn_5y = sub {return 2.0*sqrt(-((3.0*$self->{GdA} - $self->{FdA}**2)/9.0)) * cos( ($theta_ofy->($_[0])          ) / 3.0) - $self->{FdA}/3.0};
-    my $eqn_6y = sub {return 2.0*sqrt(-((3.0*$self->{GdA} - $self->{FdA}**2)/9.0)) * cos( ($theta_ofy->($_[0]) + $twopi ) / 3.0) - $self->{FdA}/3.0};
-    my $eqn_7y = sub {return 2.0*sqrt(-((3.0*$self->{GdA} - $self->{FdA}**2)/9.0)) * cos( ($theta_ofy->($_[0]) + $fourpi) / 3.0) - $self->{FdA}/3.0};
+    my $eqn_5_ofy = sub {return 2.0*sqrt(-((3.0*$self->{GdE} - $self->{FdE}**2)/9.0)) * cos( ($theta_ofy->($_[0])          ) / 3.0) - $self->{FdE}/3.0};
+    my $eqn_6_ofy = sub {return 2.0*sqrt(-((3.0*$self->{GdE} - $self->{FdE}**2)/9.0)) * cos( ($theta_ofy->($_[0]) + $twopi ) / 3.0) - $self->{FdE}/3.0};
+    my $eqn_7_ofy = sub {return 2.0*sqrt(-((3.0*$self->{GdE} - $self->{FdE}**2)/9.0)) * cos( ($theta_ofy->($_[0]) + $fourpi) / 3.0) - $self->{FdE}/3.0};
 
     my $eqn_5_prime  = sub {
         my $x=$_[0] - $self->{minx}*0;
@@ -949,6 +950,9 @@ my $y=$_[0];
         my $tmid = ($t_intervals[$i]->[0] + $t_intervals[$i]->[1]) / 2.0;
         my $ymid = $self->bezierEvalYofT($tmid);
 
+        my $ya = $self->bezierEvalYofT($t_intervals[$i]->[0]);
+        my $yb = $self->bezierEvalYofT($t_intervals[$i]->[1]);
+
         my $Rmid = $R->($xmid);
         my $Dmid = $D->($xmid);
 
@@ -988,7 +992,11 @@ my $y=$_[0];
                               [$eqn_6_ofy,$eqn_6_prime_ofy,$eqn_6_2prime_ofy],
                               [$eqn_7_ofy,$eqn_7_prime_ofy,$eqn_7_2prime_ofy] ) {
                 my $eqn = $eqns->[0];
+
                 my ($tlow,$thigh) = ($t_intervals[$i]->[0]<$t_intervals[$i]->[1]) ? ($t_intervals[$i]->[0],$t_intervals[$i]->[1]) : ($t_intervals[$i]->[1],$t_intervals[$i]->[0]);
+
+                my $tmid = ($eqn->($ya) + $eqn->($yb))/2;
+
                 if ($tmid > $tlow && $tmid < $thigh) {
                     push @yeqns, @$eqns;
                 }
@@ -1005,18 +1013,18 @@ my $y=$_[0];
 
             if ($Rmid >= 0) {
                 if ($self->{cubQ}<=0) {    # use equation 1
-                    push @{$equation_map{$eqn_1}}, [[$eqn_1,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i]];
+                    push @{$equation_map{$eqn_1}}, [[$eqn_1,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i],[$ya > $yb ? ($yb,$ya):($ya,$yb)]];
                 }
                 else {                     # use equation 2
-                    push @{$equation_map{$eqn_2}}, [[$eqn_2,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i]];
+                    push @{$equation_map{$eqn_2}}, [[$eqn_2,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i],[$ya > $yb ? ($yb,$ya):($ya,$yb)]];
                 }
             }
             elsif ($Rmid < 0) {
                 if ($self->{cubQ}<=0) {    # use equation 3
-                    push @{$equation_map{$eqn_3}}, [[$eqn_3,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i]];
+                    push @{$equation_map{$eqn_3}}, [[$eqn_3,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i],[$ya > $yb ? ($yb,$ya):($ya,$yb)]];
                 }
                 else {                     # use equation 4
-                    push @{$equation_map{$eqn_4}}, [[$eqn_4,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i]];
+                    push @{$equation_map{$eqn_4}}, [[$eqn_4,$eqn_1to4_prime,$eqn_1to4_2prime,@yeqns],$x_intervals[$i],$t_intervals[$i],$reversed[$i],[$ya > $yb ? ($yb,$ya):($ya,$yb)]];
                 }
             }
 
@@ -1033,7 +1041,7 @@ my $y=$_[0];
 
                 if ($tmid > $tlow && $tmid < $thigh) {
                     if (!exists $equation_map{$eqn}) { $equation_map{$eqn} = []; }
-                    push @{$equation_map{($eqn)}}, [$eqns,$x_intervals[$i],$t_intervals[$i],$reversed[$i]];
+                    push @{$equation_map{($eqn)}}, [$eqns,$x_intervals[$i],$t_intervals[$i],$reversed[$i],[$ya > $yb ? ($yb,$ya):($ya,$yb)] ];
                     @{$equation_map{($eqn)}} = sort {$a->[1]->[0]<=>$b->[1]->[0]} @{$equation_map{($eqn)}};
                 }
             }
@@ -1055,7 +1063,7 @@ my $y=$_[0];
 
     $self->{XtoTLUT} = \@XtoTLUT;
 
-    #warn(join(',',(map {'['.join(',',map {ref($_)?$eqn_names{$_}:$_} @$_).']'} @{$_}[0,1,2]),$_->[3]),"\n") for @XtoTLUT;
+    #warn(join(',',(map {'['.join(',',map {ref($_)?$eqn_names{$_}:$_} @$_).']'} @{$_}[0,1,2,4]),$_->[3]),"\n") for @XtoTLUT;
 
     return $self;
 
@@ -1115,7 +1123,7 @@ sub t_t_prime {
 sub t_t_prime_of_y {
     my ($self, $y, $t)=@_;
     $y //= $self->bezierEvalYofT($t);
-    my @xspans = grep {($x > $_->[1]->[0] || $x eq $_->[1]->[0]) && ($x < $_->[1]->[-1] || $x eq $_->[1]->[-1])} @{$self->{XtoTLUT}};
+    my @xspans = grep {($y > $_->[4]->[0] || $y eq $_->[4]->[0]) && ($y < $_->[4]->[-1] || $y eq $_->[4]->[-1])} @{$self->{XtoTLUT}};
     if (defined $t) {
         @xspans = grep {
             my ($lt,$ht)=$_->[2]->[0] < $_->[2]->[-1]?($_->[2]->[0] < $_->[2]->[-1]):($_->[2]->[-1] < $_->[2]->[0]);
@@ -1135,7 +1143,7 @@ sub t_t_prime_t_2prime {
 sub t_t_prime_t_2prime_of_y {
     my ($self, $y, $t)=@_;
     $y //= $self->bezierEvalYofT($t);
-    my @xspans = grep {($x > $_->[1]->[0] || $x eq $_->[1]->[0]) && ($x < $_->[1]->[-1] || $x eq $_->[1]->[-1])} @{$self->{XtoTLUT}};
+    my @xspans = grep {($y > $_->[4]->[0] || $y eq $_->[4]->[0]) && ($y < $_->[4]->[-1] || $y eq $_->[4]->[-1])} @{$self->{XtoTLUT}};
     if (defined $t) {
         @xspans = grep {
             my ($lt,$ht)=$_->[2]->[0] < $_->[2]->[-1]?($_->[2]->[0] < $_->[2]->[-1]):($_->[2]->[-1] < $_->[2]->[0]);
@@ -1221,11 +1229,8 @@ sub f_2prime {
 
 sub F_2prime {
     my ($self,$y,$t) = @_;
-
-    # need to figure single return value version when $t is provided
-    if (!defined $y && defined $t) {$y=$self->bezierEvalYofT($t);}
-
-    my @t_t_prime_t_2prime_of_y = $self->t_t_prime_t_2prime_of_y($y);
+    my @t_t_prime_t_2prime_of_y = $self->t_t_prime_t_2prime_of_y($y,$t);
+    $y //= $self->bezierEvalYofT($t);
     my @ret;
     foreach my $t_t_prime_t_2prime_of_y (@t_t_prime_t_2prime_of_y) {
         my ($t,$t_prime,$t_2prime) = @$t_t_prime_t_2prime_of_y;

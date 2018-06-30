@@ -836,9 +836,16 @@ sub getSegSegIntersects {
         push @ret, Math::MPath::Intersections::intersect_CL($curve, $line, $wantThetas, $lineIsSelf);
 
         }
+    # cubic Bezier-elliptical Arc
+    elsif (   $refstrings=~/BezierCubicSegment.*?--/ && $refstrings=~/--.*?EllipticalArc/ ) {
+        my @ret = Math::MPath::Intersections::intersect_CA($seg1,$seg2);
+    }
+    elsif (   $refstrings=~/EllipticalArc.*?--/ && $refstrings=~/--.*?BezierCubicSegment/ ) {
+        my @ret = Math::MPath::Intersections::intersect_CA($seg2,$seg1);
+    }
     # cubic Bezier-cubic Bezier
     elsif (   $refstrings=~/BezierCubicSegment.*?--/ && $refstrings=~/--.*?BezierCubicSegment/ ) {
-        my @ret = Math::MPath::Intersections::intersect_CC($seg1,$seg1);
+        my @ret = Math::MPath::Intersections::intersect_CC($seg1,$seg2);
     }
 
     return @ret;

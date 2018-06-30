@@ -263,6 +263,46 @@ sub new {
         return $t_prime;
     };
 
+    # just copy-paste and tried to adapt from x case
+    # needs testing:
+    my $t_prime_of_y_eqn_1and2 = sub {
+        my ($y,$which) = @_;
+        my $y_unshift = $y - $self->{cy};
+        my $x_u = $y_unshift * -sin(-$self->{phi_radians}); # cos(pi/2 - phi)
+        my $y_u = $y_unshift *  cos(-$self->{phi_radians}); # sin(pi/2 - phi)
+        my $m = sin(-$self->{phi_radians})/cos(-$self->{phi_radians});
+        my $z = (($self->{ry}**2+($m*$self->{rx})**2)/((1+$m**2)*sin( ( ($pi/2) - $self->{phi_radians}) + atan2(-$m,1))**2));
+        my $theta_prime = ($which?1:-1) / sqrt($z - $y_unshift**2);
+        my $t_prime = $theta_prime / $self->{delta_theta};
+        return $t_prime;
+    };
+
+    # needs testing
+    my $t_2prime_of_x_eqn_1and2 = sub {
+        my ($self,$x,$which) = @_;
+        my $x_unshift = $x - $self->{cx};
+        my $x_u = $x_unshift * cos(-$self->{phi_radians});
+        my $y_u = $x_unshift * sin(-$self->{phi_radians});
+        my $m = sin($pi/2 - $self->{phi_radians})/cos($pi/2 - $self->{phi_radians});
+        my $z = (($self->{ry}**2+($m*$self->{rx})**2)/((1+$m**2)*sin(-$self->{phi_radians}+atan2(-$m,1))**2));
+        my $theta_2prime = ($which?1:-1) * $x_unshift / (sqrt($z - $x_unshift**2)**3);
+        my $t_2prime = $theta_2prime / $self->{delta_theta};
+        return $t_2prime;
+    };
+
+    # needs testing
+    my $t_2prime_of_y_eqn_1and2 = sub {
+        my ($y,$which) = @_;
+        my $y_unshift = $y - $self->{cy};
+        my $x_u = $y_unshift * -sin(-$self->{phi_radians}); # cos(pi/2 - phi)
+        my $y_u = $y_unshift *  cos(-$self->{phi_radians}); # sin(pi/2 - phi)
+        my $m = sin(-$self->{phi_radians})/cos(-$self->{phi_radians});
+        my $z = (($self->{ry}**2+($m*$self->{rx})**2)/((1+$m**2)*sin( ( ($pi/2) - $self->{phi_radians}) + atan2(-$m,1))**2));
+        my $theta_2prime = ($which?1:-1) * $y_unshift / (sqrt($z - $y_unshift**2)**3);
+        my $t_2prime = $theta_2prime / $self->{delta_theta};
+        return $t_2prime;
+    };
+
     for (my $i = 1; $i < @div_ts; $i++) {
         my $ta = $div_ts[$i-1];
         my $tb = $div_ts[$i];
@@ -293,13 +333,24 @@ sub new {
                          return $t_of_x_eqn_1and2->($_[0],    0    );
                     },
                     sub {#t_prime(x)
-                        warn "(eq a)\n";
+                        #warn "(eq a)\n";
                         return $t_prime_of_x_eqn_1and2->($_[0],    0    );
                     },
-                    undef,#t_2prime(x)
+                    sub {#t_2prime(x)
+                        #warn "(eq a)\n";
+                        return $t_2prime_of_x_eqn_1and2->($_[0],    0    );
+                    },
                     sub {#t(y)
                          #warn "(eq a)\n";
                          return $t_of_y_eqn_1and2->($_[0],    1    );
+                    },
+                    sub {#t'(y)
+                         #warn "(eq a)\n";
+                        return $t_prime_of_y_eqn_1and2->($_[0],    1    );
+                    },
+                    sub {#t_2prime(y)
+                        #warn "(eq a)\n";
+                        return $t_2prime_of_y_eqn_1and2->($_[0],    1    );
                     }
                 );
             }
@@ -310,13 +361,24 @@ sub new {
                          return $t_of_x_eqn_1and2->($_[0],    1    );
                     },
                     sub {#t_prime(x)
-                        warn "(eq b)\n";
+                        #warn "(eq b)\n";
                         return $t_prime_of_x_eqn_1and2->($_[0],    1    );
                     },
-                    undef,
+                    sub {#t_2prime(x)
+                        #warn "(eq b)\n";
+                        return $t_2prime_of_x_eqn_1and2->($_[0],    1    );
+                    },
                     sub {
                          #warn "(eq b)\n";
                          return $t_of_y_eqn_1and2->($_[0],    0    );
+                    },
+                    sub {#t'(y)
+                         #warn "(eq a)\n";
+                        return $t_prime_of_y_eqn_1and2->($_[0],    0    );
+                    },
+                    sub {#t_2prime(y)
+                        #warn "(eq b)\n";
+                        return $t_2prime_of_y_eqn_1and2->($_[0],    0    );
                     }
                 );
             }
@@ -330,13 +392,24 @@ sub new {
                          return $t_of_x_eqn_1and2->($_[0],    1    );
                     },
                     sub {#t_prime(x)
-                        warn "(eq c)\n";
+                        #warn "(eq c)\n";
                         return $t_prime_of_x_eqn_1and2->($_[0],    1    );
                     },
-                    undef,
+                    sub {#t_2prime(x)
+                        #warn "(eq c)\n";
+                        return $t_2prime_of_x_eqn_1and2->($_[0],    1    );
+                    },
                     sub {
                          #warn "(eq c)\n";
                          return $t_of_y_eqn_1and2->($_[0],    0    );
+                    },
+                    sub {#t'(y)
+                         #warn "(eq a)\n";
+                        return $t_prime_of_y_eqn_1and2->($_[0],    0    );
+                    },
+                    sub {#t_2prime(y)
+                        #warn "(eq c)\n";
+                        return $t_2prime_of_y_eqn_1and2->($_[0],    0    );
                     }
                 );
             }
@@ -347,14 +420,26 @@ sub new {
                          return $t_of_x_eqn_1and2->($_[0],    0    );
                     },
                     sub {#t_prime(x)
-                        warn "(eq d)\n";
+                        #warn "(eq d)\n";
                         return $t_prime_of_x_eqn_1and2->($_[0],    0    );
                     },
-                    undef,
+                    sub {#t_2prime(x)
+                        #warn "(eq d)\n";
+                        return $t_2prime_of_x_eqn_1and2->($_[0],    0    );
+                    },
                     sub {
                          #warn "(eq d)\n";
                          return $t_of_y_eqn_1and2->($_[0],    1    );
+                    },
+                    sub {#t'(y)
+                         #warn "(eq a)\n";
+                        return $t_prime_of_y_eqn_1and2->($_[0],    1    );
+                    },
+                    sub {#t_2prime(y)
+                        #warn "(eq d)\n";
+                        return $t_2prime_of_y_eqn_1and2->($_[0],    1    );
                     }
+
                 );
             }
             else { warn "out of bounds angle [$angle_mid]";}
@@ -671,12 +756,7 @@ sub t_from_xoff {
     my $rfsub = sub {
         my $t = $_[0];
         my $x = $self->evalXofTheta($t);
-        # my $offset_x = $x - $self->evalYPrimeofTheta($t) * $tprimeofxfunc->($x) * $distance;
-        # above and below are close, but not the same. Should figure out why. Probably tprimeofxfunc from LUT is wrong?
         my $offset_x = $x + cos($self->angleNormal_byTheta($t)) * $distance;
-
-        # warn "[$t][$xoff] $offset_x = $x + ",cos($self->angleNormal_byTheta($t)) * $distance,"\n";
-
         return $offset_x - $xoff;
     };
     $t_bounds = [$t_bounds->[1], $t_bounds->[0]] if $t_bounds->[0] > $t_bounds->[1];
@@ -684,6 +764,11 @@ sub t_from_xoff {
     die "t_from_xoff() root find fail: $msg\n" if $msg;
     return $t;
 }
+
+sub t_from_xoff_prime {
+    my ($self, $xoff, $distance, $t_bounds, $tprimeofxfunc) = @_;
+}
+
 
 sub evalYofTheta { # this "Theta" means "t" - fix
     my ($self, $t) = @_;
@@ -726,12 +811,15 @@ sub evalYPrimeofTheta { # this "Theta" means "t" - fix
 sub evalYPrimeofArcTheta {
     my ($self, $theta) = @_;
     return if !$self->isWithinThetaRange($theta);
-    return $self->{rx} * (0 + sprintf("%.14f",-sin($theta))) * sin($self->{phi_radians}) + $self->{ry} * (0 + sprintf("%.14f",cos($theta))) *  cos($self->{phi_radians});
+    return (  $self->{rx} * (0 + sprintf("%.14f",-sin($theta))) * sin($self->{phi_radians})
+            + $self->{ry} * (0 + sprintf("%.14f",cos($theta))) *  cos($self->{phi_radians})
+           ) * ($self->{sweep_flag} ? 1:-1)
+    ;
 }
 sub evalXPrimeofTheta { # this "Theta" means "t" - fix
     my ($self, $t) = @_;
     my $theta = $self->theta_of_t($t);
-    return if !$self->isWithinThetaRange($arc_theta);
+    return if !$self->isWithinThetaRange($theta);
     return (  $self->{rx} * (0 + sprintf("%.14f",-sin($theta))) *  cos($self->{phi_radians})
             + $self->{ry} * (0 + sprintf("%.14f", cos($theta))) * -sin($self->{phi_radians})
            )
@@ -743,7 +831,7 @@ sub evalXPrimeofArcTheta {
     return if !$self->isWithinThetaRange($theta);
     return (  $self->{rx} * (0 + sprintf("%.14f",-sin($theta))) *  cos($self->{phi_radians})
             + $self->{ry} * (0 + sprintf("%.14f", cos($theta))) * -sin($self->{phi_radians})
-           )
+           ) * ($self->{sweep_flag} ? 1:-1)
     ;
 }
 sub evalYDoublePrimeofTheta { # this "Theta" means "t" - fix
@@ -904,18 +992,15 @@ sub getLength {
         return abs($self->{rx} * $self->{delta_theta} * ($end_t - $start_t));
     }
 
-    # this isn't set up yet to take arbitrary thetas for sub-lengths of ellipse arc
 
     my $sum = 0;
     my $point1 = $self->point($start_t);
     my $point2;
-
-    warn "untested length function - look okay?\n";
-    my $t_res = ($end_t - $start_t) / $res;
-    my $t_inc = 1/$t_res;
-    for (my $i=0;$i<$t_res;$i++) {
+    my $t_span = ($end_t - $start_t);
+    my $t_inc = $t_span/$res;
+    for (my $i=0;$i<$t_span;$i+=$t_inc) {
         $point2 = $point1;
-        $point1 = $self->point($start_t + $i * $t_inc);
+        $point1 = $self->point($start_t + $i);
         $sum += sqrt(($point2->[0]-$point1->[0])**2 + ($point2->[1]-$point1->[1])**2);
     }
     return $sum;
@@ -995,9 +1080,9 @@ sub angleTangent {
 
     foreach my $this_t (@ts) {
         my $arctheta = $self->theta_of_t($this_t);
-        push @ret, -1 * atan2( $self->evalYPrimeofArcTheta($arctheta), 
-                               $self->evalXPrimeofArcTheta($arctheta)
-                               * ($self->{sweep_flag} ? 1:-1) );
+        push @ret, atan2( $self->evalYPrimeofArcTheta($arctheta),
+                          $self->evalXPrimeofArcTheta($arctheta)
+                        );
     }
 
     return wantarray ? @ret : $ret[0];
@@ -1039,6 +1124,79 @@ sub slopeNormal_byTheta {
     my ($self,$t) = @_;
     return $self->slopeNormal(undef,undef,$t);
 }
+
+sub t_t_prime_of_y {
+    my ($self, $y, $t)=@_;
+    $y //= $self->evalYofTheta($t);
+    my @xspans = grep {($y > $_->[4]->[0] || $y eq $_->[4]->[0]) && ($y < $_->[4]->[-1] || $y eq $_->[4]->[-1])} @{$self->{XtoTLUT}};
+    if (defined $t) {
+        @xspans = grep {
+            my ($lt,$ht)=$_->[2]->[0] < $_->[2]->[-1]?($_->[2]->[0] < $_->[2]->[-1]):($_->[2]->[-1] < $_->[2]->[0]);
+            $t >= $lt && $t <= $ht;
+        } @xspans;
+    }
+    my @ret = map {[$_->[0]->[3]->($y),$_->[0]->[4]->($y),$_->[3]]} @xspans;
+    return wantarray ? @ret : $ret[0];
+}
+
+sub t_t_prime_t_2prime_of_y {
+    my ($self, $y, $t)=@_;
+    $y //= $self->evalYofTheta($t);
+    my @xspans = grep {($y > $_->[4]->[0] || $y eq $_->[4]->[0]) && ($y < $_->[4]->[-1] || $y eq $_->[4]->[-1])} @{$self->{XtoTLUT}};
+    if (defined $t) {
+        @xspans = grep {
+            my ($lt,$ht)=$_->[2]->[0] < $_->[2]->[-1]?($_->[2]->[0] < $_->[2]->[-1]):($_->[2]->[-1] < $_->[2]->[0]);
+            $t >= $lt && $t <= $ht;
+        } @xspans;
+    }
+    my @ret = map {[$_->[0]->[3]->($y),$_->[0]->[4]->($y),$_->[0]->[5]->($y),$_->[3]]} @xspans;
+    return wantarray ? @ret : $ret[0];
+}
+
+sub F_prime {
+    my ($self,$y,$t) = @_;
+
+    my @t_t_prime_of_y = $self->t_t_prime_of_y($y,$t);
+    $y //= $self->evalYofTheta($t);
+    my @ret;
+    foreach my $t_t_prime_of_y (@t_t_prime_of_y) {
+        my ($t_of_y,$t_prime_of_y) = @$t_t_prime_of_y;
+        # F'(y) = X'(t) * t'(y)
+        my $x_prime_of_y = $self->evalXPrimeofTheta($t_of_y) * $t_prime_of_y;
+        push @ret, $x_prime_of_y;
+    }
+    if (@ret>0) {
+        return wantarray ? @ret : $ret[0];
+    }
+    else {
+        return;
+    }
+}
+
+sub F_2prime {
+    my ($self,$y,$t) = @_;
+
+    my @t_t_prime_t_2prime_of_y = $self->t_t_prime_t_2prime_of_y($y);
+    $y //= $self->evalYofTheta($t);
+    my @ret;
+    foreach my $t_t_prime_t_2prime_of_y (@t_t_prime_t_2prime_of_y) {
+        my ($t,$t_prime,$t_2prime) = @$t_t_prime_t_2prime_of_y;
+        # F''(y) = [X'(t) * t'(y)]'
+        #        = ( ( X''(t) * t'(y) ) * t'(y) + X'(t) * t''(y))
+        #        = ( X''(t) * t'(y)^2 + X'(t) * t''(y))
+        my $x_2prime_of_y = $self->evalXDoublePrimeofTheta($t) * $t_prime**2
+                          + $self->evalXPrimeofTheta($t) * $t_2prime;
+        push @ret, $x_2prime_of_y;
+    }
+    if (@ret>0) {
+        return wantarray ? @ret : $ret[0];
+    }
+    else {
+        return;
+    }
+
+}
+
 
 sub secondDerivative { #think we might call it something else. follow what you did/do in cubic Bezier stuff
     my $self = shift;
