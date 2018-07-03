@@ -279,7 +279,7 @@ sub new {
 
     # needs testing
     my $t_2prime_of_x_eqn_1and2 = sub {
-        my ($self,$x,$which) = @_;
+        my ($x,$which) = @_;
         my $x_unshift = $x - $self->{cx};
         my $x_u = $x_unshift * cos(-$self->{phi_radians});
         my $y_u = $x_unshift * sin(-$self->{phi_radians});
@@ -1125,6 +1125,34 @@ sub slopeNormal_byTheta {
     return $self->slopeNormal(undef,undef,$t);
 }
 
+sub t_t_prime {
+    my ($self, $x, $t)=@_;
+    $x //= $self->evalXofTheta($t);
+    my @xspans = grep {($x > $_->[1]->[0] || $x eq $_->[1]->[0]) && ($x < $_->[1]->[-1] || $x eq $_->[1]->[-1])} @{$self->{XtoTLUT}};
+    if (defined $t) {
+        @xspans = grep {
+            my ($lt,$ht)=$_->[2]->[0] < $_->[2]->[-1]?($_->[2]->[0] < $_->[2]->[-1]):($_->[2]->[-1] < $_->[2]->[0]);
+            $t >= $lt && $t <= $ht;
+        } @xspans;
+    }
+    my @ret = map {[$_->[0]->[0]->($x),$_->[0]->[1]->($x),$_->[3]]} @xspans;
+    return wantarray ? @ret : $ret[0];
+}
+
+sub t_t_prime_t_2prime {
+    my ($self, $x, $t)=@_;
+    $x //= $self->evalYofTheta($t);
+    my @xspans = grep {($x > $_->[1]->[0] || $x eq $_->[1]->[0]) && ($x < $_->[1]->[-1] || $x eq $_->[1]->[-1])} @{$self->{XtoTLUT}};
+    if (defined $t) {
+        @xspans = grep {
+            my ($lt,$ht)=$_->[2]->[0] < $_->[2]->[-1]?($_->[2]->[0] < $_->[2]->[-1]):($_->[2]->[-1] < $_->[2]->[0]);
+            $t >= $lt && $t <= $ht;
+        } @xspans;
+    }
+    my @ret = map {[$_->[0]->[0]->($x),$_->[0]->[1]->($x),$_->[0]->[2]->($x),$_->[3]]} @xspans;
+    return wantarray ? @ret : $ret[0];
+}
+
 sub t_t_prime_of_y {
     my ($self, $y, $t)=@_;
     $y //= $self->evalYofTheta($t);
@@ -1151,6 +1179,50 @@ sub t_t_prime_t_2prime_of_y {
     }
     my @ret = map {[$_->[0]->[3]->($y),$_->[0]->[4]->($y),$_->[0]->[5]->($y),$_->[3]]} @xspans;
     return wantarray ? @ret : $ret[0];
+}
+
+sub f_prime {
+    my ($self,$x,$t) = @_;
+
+    my @t_t_prime = $self->t_t_prime($x,$t);
+    $x //= $self->evalXofTheta($t);
+    my @ret;
+    foreach my $t_t_prime (@t_t_prime) {
+        my ($t,$t_prime) = @$t_t_prime;
+        # f'(x) = Y'(t) * t'(x)
+        my $y_prime_of_x = $self->evalYPrimeofTheta($t) * $t_prime;
+        push @ret, $y_prime_of_x;
+    }
+    if (@ret>0) {
+        return wantarray ? @ret : $ret[0];
+    }
+    else {
+        return;
+    }
+}
+
+sub f_2prime {
+    my ($self,$x,$t) = @_;
+
+    my @t_t_prime_t_2prime = $self->t_t_prime_t_2prime($x,$t);
+    $x //= $self->evalXofTheta($t);
+    my @ret;
+    foreach my $t_t_prime_t_2prime (@t_t_prime_t_2prime) {
+        my ($t,$t_prime,$t_2prime) = @$t_t_prime_t_2prime;
+        # f''(x) = [Y'(t) * t'(x)]'
+        #        = ( ( Y''(t) * t'(x) ) * t'(x) + Y'(t) * t''(x))
+        #        = ( Y''(t) * t'(x)^2 + Y'(t) * t''(x))
+        my $y_2prime_of_x = $self->evalYDoublePrimeofTheta($t) * $t_prime**2
+                          + $self->evalYPrimeofTheta($t) * $t_2prime;
+        push @ret, $y_2prime_of_x;
+    }
+    if (@ret>0) {
+        return wantarray ? @ret : $ret[0];
+    }
+    else {
+        return;
+    }
+
 }
 
 sub F_prime {
