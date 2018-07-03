@@ -1198,25 +1198,37 @@ sub intersect_CoAo {
 
                 my $y_diff_prime = sub {
 
+                    # for the bezier
                     my $tA = $bezA->t_from_xoff($_[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
-                    my $tB = $arcB->t_from_xoff($_[0],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
-
-                    my $nA = $bezA->F_prime(undef,$tA);
-                    my $nB = $arcB->F_prime(undef,$tB);
-
-                    my $nA_prime = $bezA->F_2prime(undef,$tA);
-                    my $nB_prime = $arcB->F_2prime(undef,$tB);
-
+                    my $xA = $bezA->bezierEvalXofT($tA);
+                    my $tA_prime  = $spanA->[0]->[1]->($xA);
+                    my $tA_2prime = $spanA->[0]->[2]->($xA);
+                    #bez->f_prime()
+                    my $mA = $bezA->{Em3} * $tA**2 * $tA_prime  +  $bezA->{Fm2} * $tA * $tA_prime + $bezA->{G} * $tA_prime;
+                    #bez->f_2prime()
+                    my $mA_prime = $bezA->{Em3} * ($tA**2 * $tA_2prime + 2*$tA*$tA_prime**2) + $bezA->{Fm2} * ($tA * $tA_2prime + $tA_prime**2) + $bezA->{G} * $tA_2prime;
                     my $YPrimeA = $bezA->bezierEvalYPrimeofT($tA);
-                    my $YPrimeB = $arcB->evalYPrimeofTheta($tB);
-
-                    my $yoffset_primeA = -($offA/2.0) * 1/(sqrt($nA**2 + 1)**3) * 2*$nA * $nA_prime;
-                    my $yoffset_primeB = -($offB/2.0) * 1/(sqrt($nB**2 + 1)**3) * 2*$nB * $nB_prime;
-
+                    my $yoffset_primeA = -($offA/2.0) * (1/(sqrt($mA**2 + 1)**3)) * 2*$mA * $mA_prime;
+                    $YPrimeA *= -1 if $spanA->[3];
+                    $yoffset_primeA *= -1 if $spanA->[3];
                     my $YoffPrimeA = ($YPrimeA + $yoffset_primeA);
+
+                    # for the arc
+                    my $tB = $arcB->t_from_xoff($_[0],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+                    my $xB = $arcB->evalXofTheta($tB);
+                    my $tB_prime  = $spanB->[0]->[1]->($xB);
+                    my $tB_2prime = $spanB->[0]->[2]->($xB);
+                    # arc->f_prime()
+                    my $mB = $arcB->evalYPrimeofTheta($tB) * $tB_prime;
+                    # arc->f_2prime()
+                    my $mB_prime = $arcB->evalYDoublePrimeofTheta($tB) * $tB_prime**2 + $arcB->evalYPrimeofTheta($tB) * $tB_2prime;
+                    my $YPrimeB = $arcB->evalYPrimeofTheta($tB);
+                    my $yoffset_primeB = -($offB/2.0) * 1/(sqrt($mB**2 + 1)**3) * 2*$mB * $mB_prime;
+                    $YPrimeB *= -1 if $spanB->[3];
+                    $yoffset_primeB *= -1 if $spanB->[3];
                     my $YoffPrimeB = ($YPrimeB + $yoffset_primeB);
 
-                    my $ret = $YoffPrimeB - $YoffPrimeA;
+                    my $ret = $YoffPrimeA - $YoffPrimeB;
 
                     return $ret;
 
@@ -1245,10 +1257,10 @@ sub intersect_CoAo {
                     # so re-call run will have proper x bounds to find each of
                     # the intersection pair individually.
 
-                    my $sub_t_span_1_A = [$tsA->[0], $split_t_A];
-                    my $sub_t_span_2_A = [$split_t_A, $tsA->[1]];
-                    my $sub_t_span_1_B = [$tsB->[0], $split_t_B];
-                    my $sub_t_span_2_B = [$split_t_B, $tsB->[1]];
+                    my $sub_t_span_1_A = [$tsA->[$spanA->[3]?1:0], $split_t_A];
+                    my $sub_t_span_2_A = [$split_t_A, $tsA->[$spanA->[3]?0:1]];
+                    my $sub_t_span_1_B = [$tsB->[$spanB->[3]?1:0], $split_t_B];
+                    my $sub_t_span_2_B = [$split_t_B, $tsB->[$spanB->[3]?0:1]];
 
                     #warn "re-call 1\n";
                     #warn "  [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]]\n";

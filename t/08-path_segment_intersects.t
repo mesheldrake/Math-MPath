@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 45;
+use Test::More tests => 52;
 
 use Math::MPath;
 
@@ -170,30 +170,74 @@ ok(    abs($intersections[1]->[0] - 27.4052) < 0.0001
     Math::MPath::EllipticalArc->new([0,6.0],[30,31],0,0,1,[30.0,29.0],0.00001,1)
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(scalar(@intersections) == 2, 'two intersections for CA');
+ok(scalar(@intersections) == 2, 'CA two intersections');
 ok(    abs($intersections[0]->[0] -  8.0254) < 0.0001
     && abs($intersections[0]->[1] -  6.8414) < 0.0001
+    , 'CA intersect pair, first'
 );
 ok(    abs($intersections[1]->[0] - 28.2791) < 0.0001
     && abs($intersections[1]->[1] - 24.0560) < 0.0001
+    , 'CA intersect pair, second'
 );
 
-## CoAo ## cubic Bezier intersection where there are two intersections between decomposed sub sections of OFFSET beziers
+## CoAo ## cubic Bezier and elliptical arc intersection where there are two intersections between decomposed sub sections of each OFFSET curve
 @intersections = Math::MPath::Intersections::intersect_CoAo(
     Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
     Math::MPath::EllipticalArc->new([0,6.0],[30,31],0,0,1,[30.0,29.0],0.00001,1),
     0.3, 0.2
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(scalar(@intersections) == 2, 'two intersections for CoAo');
+ok(scalar(@intersections) == 2, 'CoAo two intersections');
 ok( @intersections > 0
     && abs($intersections[0]->[0] -  7.7580) < 0.0001
     && abs($intersections[0]->[1] -  6.9820) < 0.0001
+    , 'CoAo intersect pair, first'
 );
 
 ok( @intersections > 1
     && abs($intersections[1]->[0] - 28.1865) < 0.0001
     && abs($intersections[1]->[1] - 24.3423) < 0.0001
+    , 'CoAo intersect pair, second'
+);
+
+## CoAo ## as above, but just Bezier control points reversed
+@intersections = Math::MPath::Intersections::intersect_CoAo(
+    Math::MPath::BezierCubicSegment->new([35.0,26.0],[23.0,24.0],[11.0,14.0],[4.0,0],0.00001,1),
+    Math::MPath::EllipticalArc->new([0,6.0],[30,31],0,0,1,[30.0,29.0],0.00001,1),
+    0.3, 0.2
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'CoAo, Co reversed, two intersections');
+ok( @intersections > 0
+    && abs($intersections[0]->[0] -  8.5357) < 0.0001
+    && abs($intersections[0]->[1] -  7.0521) < 0.0001
+    , 'CoAo, Co reversed, intersect pair, first'
+);
+
+ok( @intersections > 1
+    && abs($intersections[1]->[0] - 28.1136) < 0.0001
+    && abs($intersections[1]->[1] - 23.6622) < 0.0001
+    , 'CoAo, Co reversed, intersect pair, second'
+);
+
+## CoAo ## as above, but just arc reversed - reverse end points AND sweep flag
+@intersections = Math::MPath::Intersections::intersect_CoAo(
+    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
+    Math::MPath::EllipticalArc->new([30.0,29.0],[30,31],0,0,0,[0,6.0],0.00001,1),
+    0.3, 0.2
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'CoAo, Ao reversed, two intersections');
+ok( @intersections > 0
+    && abs($intersections[0]->[0] -  7.4282) < 0.0001
+    && abs($intersections[0]->[1] -  6.4947) < 0.0001
+    , 'CoAo, Ao reversed, intersect pair, first'
+);
+
+ok( @intersections > 1
+    && abs($intersections[1]->[0] - 28.7116) < 0.0001
+    && abs($intersections[1]->[1] - 24.5528) < 0.0001
+    , 'CoAo, Ao reversed, intersect pair, second'
 );
 
 ## CC ## cubic Bezier loop self-intersect case
@@ -202,26 +246,13 @@ $mp_bez_seg = Math::MPath::BezierCubicSegment->new([0,0],[200,80],[-100,80],[100
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 50) < 0.0001
     && abs($intersections[0]->[1] - 24) < 0.0001
+    , 'CC self intersect'
 );
 
 ## CC ## cubic Bezier intersection where there are two intersections between decomposed sub sections of beziers
 @intersections = Math::MPath::Intersections::intersect_CC(
     Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
     Math::MPath::BezierCubicSegment->new([0,6.0],[13.0, 9.0],[24.0,19.0],[30.0,29.0],0.00001,1)
-);
-#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
-    && abs($intersections[0]->[1] -  9.9952) < 0.0001
-);
-ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
-    && abs($intersections[1]->[1] - 22.8527) < 0.0001
-);
-
-## CC ## as above, but with control points in reverse order for seecond Bezier
-#        so that increasing t gives decreasing x for that one.
-@intersections = Math::MPath::Intersections::intersect_CC(
-    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
-    Math::MPath::BezierCubicSegment->new([30.0,29.0],[24.0,19.0],[13.0, 9.0],[0,6.0],0.00001,1)
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'CC pair count == 2');
@@ -232,6 +263,23 @@ ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
 ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
     && abs($intersections[1]->[1] - 22.8527) < 0.0001
     , 'CC pair second'
+);
+
+## CC ## as above, but with control points in reverse order for second Bezier
+#        so that increasing t gives decreasing x for that one.
+@intersections = Math::MPath::Intersections::intersect_CC(
+    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
+    Math::MPath::BezierCubicSegment->new([30.0,29.0],[24.0,19.0],[13.0, 9.0],[0,6.0],0.00001,1)
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'CC pair, 2nd reversed, count == 2');
+ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
+    && abs($intersections[0]->[1] -  9.9952) < 0.0001
+    , 'CC pair, 2nd reversed, first'
+);
+ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
+    && abs($intersections[1]->[1] - 22.8527) < 0.0001
+    , 'CC pair, 2nd reversed, second'
 );
 
 ## CoCo ## same looped bezier but two different offsets; should intersect two times
