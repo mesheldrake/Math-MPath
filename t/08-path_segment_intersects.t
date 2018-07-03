@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 52;
+use Test::More tests => 59;
 
 use Math::MPath;
 
@@ -21,6 +21,7 @@ $mp2 = Math::MPath->newlite('M9,1  L21,11',0.00001);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.71) < 0.01
     && abs($intersections[0]->[1] -  5.76) < 0.01
+    , 'LL line segment intersection'
 );
 
 ## LoLo ## offset lines - wrapper for LL
@@ -32,6 +33,7 @@ ok(    abs($intersections[0]->[0] - 14.71) < 0.01
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.6288) < 0.0001
     && abs($intersections[0]->[1] -  5.4303) < 0.0001
+    , 'LoLo offset line segment intersection'
 );
 
 ## AL ## general elliptical arc and line
@@ -41,6 +43,7 @@ $mp2 = Math::MPath->newlite('M9,1  L21,11',0.00001);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 15.2972) < 0.0001
     && abs($intersections[0]->[1] -  6.2477) < 0.0001
+    , 'AL circular arc and line one intersection'
 );
 
 ## A1oLo ## offset circular arc and offset line (wrapper for AL)
@@ -50,6 +53,7 @@ $mp_line_seg = Math::MPath::LineSegment->new([9,1],[21,11],0.00001,1);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 15.4485) < 0.0001
     && abs($intersections[0]->[1] -  6.1134) < 0.0001
+    , 'A1oLo offset circular arc and offset line one intersection'
 );
 
 ## A1A1 ## special case of two circular elliptical arcs
@@ -59,6 +63,7 @@ $mp2 = Math::MPath->newlite('M9,1  A30,30,0,0,0,21,11',0.00001);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
     && abs($intersections[0]->[1] -  6.9334) < 0.0001
+    , 'A1A1 circular arcs one intersection'
 );
 
 ## A1oA1o ## special case of two offset circular elliptical arcs - wrapper for A1A1
@@ -70,6 +75,7 @@ ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
     && abs($intersections[0]->[1] -  6.9334) < 0.0001
+    , 'A1oA1o offset circular arcs one intersection'
 );
 
 ## AoAo ## two offset elliptical arcs, one intersection
@@ -81,6 +87,7 @@ ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.5850) < 0.0001
     && abs($intersections[0]->[1] -  7.2472) < 0.0001
+    , 'AoAo one intersection'
 );
 
 ## AoAo ## two offset elliptical arcs, two intersections within one sub section
@@ -90,6 +97,7 @@ ok(    abs($intersections[0]->[0] - 14.5850) < 0.0001
     0.3,0.2
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'AoAo two intersections');
 ok(    abs($intersections[0]->[0] -  5.4275) < 0.0001
     && abs($intersections[0]->[1] -  6.5224) < 0.0001
     , 'AoAo intersect pair, first'
@@ -99,6 +107,39 @@ ok(    abs($intersections[1]->[0] - 28.8309) < 0.0001
     , 'AoAo intersect pair, second'
 );
 
+## AoAo ## as above, but first reversed
+@intersections = Math::MPath::Intersections::intersect_AoAo(
+    Math::MPath::EllipticalArc->new([35.0,26.0],[30,31],0,0,1,[4.0,0],0.00001,1),
+    Math::MPath::EllipticalArc->new([0,6.0],[30,31],0,0,1,[30.0,29.0],0.00001,1),
+    0.3,0.2
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'AoAo, first reversed, two intersections');
+ok(    abs($intersections[0]->[0] -  6.1159) < 0.0001
+    && abs($intersections[0]->[1] -  6.6375) < 0.0001
+    , 'AoAo, first reversed, intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 28.5805) < 0.0001
+    && abs($intersections[1]->[1] - 25.2893) < 0.0001
+    , 'AoAo, first reversed, intersect pair, second'
+);
+
+## AoAo ## as above, but second reversed
+@intersections = Math::MPath::Intersections::intersect_AoAo(
+    Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1),
+    Math::MPath::EllipticalArc->new([30.0,29.0],[30,31],0,0,0,[0,6.0],0.00001,1),
+    0.3,0.2
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'AoAo, second reversed, two intersections');
+ok(    abs($intersections[0]->[0] -  5.2672) < 0.0001
+    && abs($intersections[0]->[1] -  6.0936) < 0.0001
+    , 'AoAo, second reversed, intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 29.2832) < 0.0001
+    && abs($intersections[1]->[1] - 26.0120) < 0.0001
+    , 'AoAo, second reversed, intersect pair, second'
+);
 ## CL ##
 $mp1 = Math::MPath->newlite('M10,10C13,10,16,8,20,1',0.00001);
 $mp2 = Math::MPath->newlite('M9,1  L21,11',0.00001);
