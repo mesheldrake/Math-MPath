@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 41;
+use Test::More tests => 45;
 
 use Math::MPath;
 
@@ -122,6 +122,34 @@ ok(    abs($intersections[1]->[0] - 27.2036) < 0.0001
     && abs($intersections[1]->[1] - 23.9215) < 0.0001
     , 'CoLo intersect pair, second'
 );
+
+## CoLo ##
+$mp_bez_seg  = Math::MPath::BezierCubicSegment->new([35.0,26.0],[23.0,24.0],[11.0,14.0],[4.0,0],0.00001,1); # with islite flag
+$mp_line_seg = Math::MPath::LineSegment->new(       [3.0,4.0],                        [33.0,27.0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_CoLo($mp_bez_seg,$mp_line_seg, 0.3, 0.2);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(    abs($intersections[0]->[0] - 10.7367) < 0.0001
+    && abs($intersections[0]->[1] -  9.9969) < 0.0001
+    , 'CoLo, Co reversed, intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 29.0594) < 0.0001
+    && abs($intersections[1]->[1] - 24.0443) < 0.0001
+    , 'CoLo, Co reversed, intersect pair, second'
+);
+## CoLo ##
+$mp_bez_seg  = Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1); # with islite flag
+$mp_line_seg = Math::MPath::LineSegment->new(       [30.0,26.0],                    [ 0,   3.0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_CoLo($mp_bez_seg,$mp_line_seg, 0.3, 0.2);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(    abs($intersections[0]->[0] - 11.2407) < 0.0001
+    && abs($intersections[0]->[1] - 11.5524) < 0.0001
+    , 'CoLo, Lo reversed, intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 27.6025) < 0.0001
+    && abs($intersections[1]->[1] - 24.0965) < 0.0001
+    , 'CoLo, Lo reversed, intersect pair, second'
+);
+
 ## CoL ##
 $mp_bez_seg  = Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1); # with islite flag
 $mp_line_seg = Math::MPath::LineSegment->new([0,3.0],[30.0,26.0],0.00001,1); # with islite flag

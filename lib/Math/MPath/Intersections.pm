@@ -1479,12 +1479,14 @@ sub intersect_CoCo {
                     my $YPrimeA = $bezA->bezierEvalYPrimeofT($tA);
                     my $YPrimeB = $bezB->bezierEvalYPrimeofT($tB);
 
-                    $YPrimeA *= -1 if $spanA->[3];
-                    $YPrimeB *= -1 if $spanB->[3];
-
                     my $yoffset_primeA = -($offA/2.0) * (1/(sqrt($mA**2 + 1)**3)) * 2*$mA * $mA_prime;
                     my $yoffset_primeB = -($offB/2.0) * (1/(sqrt($mB**2 + 1)**3)) * 2*$mB * $mB_prime;
  
+                    # if isReversed flag true, (increasing x gives decreasing t)
+                    # dY/dt and dYoffset/dt need to be negated,
+                    # to correspond to dY/dx
+                    $YPrimeA *= -1 if $spanA->[3];
+                    $YPrimeB *= -1 if $spanB->[3];
                     $yoffset_primeA *= -1 if $spanA->[3];
                     $yoffset_primeB *= -1 if $spanB->[3];
 
@@ -1565,12 +1567,13 @@ sub intersect_CoLo {
 
     if (!$lutB && !exists $lineB->{XtoTLUT}) {
         # too complex probably for line segments, but hack it in here while adapting this bez-bez algo to work with bez-line
+        my $line_is_reversed = $lineB->{p2}->[0] >= $lineB->{p1}->[0] ? 0 : 1;
         $lineB->{XtoTLUT} = [
                              [
                               [sub {$lineB->solveXforTheta($_[0])}], # bez would have 3 or 6 sub refs here. line only needs 1 or 2. 1 for our purposes here so far
                               [$lineB->{minx},$lineB->{maxx}],
-                              [0,1],
-                              ($lineB->{p2}->[0] >= $lineB->{p1}->[0] ? 0 : 1)
+                              [$line_is_reversed?(1,0):(0,1)],
+                              $line_is_reversed
                              ]
                             ];
     }
@@ -1720,16 +1723,30 @@ sub intersect_CoLo {
             # Seems right on first tests.
 
             my $y_diff_prime = sub {
+
+                # for the Bezier
                 my $tA = $bezA->t_from_xoff($_[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1],$spanA->[3]);
-                my $nA = $bezA->F_prime(undef,$tA);
-                my $nA_prime = $bezA->F_2prime(undef,$tA);
+                my $xA = $bezA->bezierEvalXofT($tA);
+                my $tA_prime  = $spanA->[0]->[1]->($xA);
+                my $tA_2prime = $spanA->[0]->[2]->($xA);
+                # bez->f_prime()
+                my $mA = $bezA->{Em3} * $tA**2 * $tA_prime  +  $bezA->{Fm2} * $tA * $tA_prime + $bezA->{G} * $tA_prime;
+                # bez->f_2prime()
+                my $mA_prime = $bezA->{Em3} * ($tA**2 * $tA_2prime + 2*$tA*$tA_prime**2) + $bezA->{Fm2} * ($tA * $tA_2prime + $tA_prime**2) + $bezA->{G} * $tA_2prime;
+
                 my $YPrimeA = $bezA->bezierEvalYPrimeofT($tA);
-                my $yoffset_primeA = -($offA/2.0) * 1/(sqrt($nA**2 + 1)**3) * 2*$nA * $nA_prime;
+                my $yoffset_primeA = -($offA/2.0) * (1/(sqrt($mA**2 + 1)**3)) * 2*$mA * $mA_prime;
+
+                $YPrimeA *= -1 if $spanA->[3];
+                $yoffset_primeA *= -1 if $spanA->[3];
+
                 my $YoffPrimeA = ($YPrimeA + $yoffset_primeA);
 
-                my $YoffPrimeB = $lineB->{dy};
+                # for the Line
+                my $YoffPrimeB = $lineB->{dy}; # dy/dt which is (y2-y1)/(1-0)
+                $YoffPrimeB *= -1 if $spanB->[3];
 
-                my $ret = $YoffPrimeB - $YoffPrimeA;
+                my $ret = $YoffPrimeA - $YoffPrimeB;
 
                 return $ret;
             };
@@ -1757,10 +1774,10 @@ sub intersect_CoLo {
                 # so re-call run will have proper x bounds to find each of
                 # the intersection pair individually.
 
-                my $sub_t_span_1_A = [$tsA->[0], $split_t_A];
-                my $sub_t_span_2_A = [$split_t_A, $tsA->[1]];
-                my $sub_t_span_1_B = [$tsB->[0], $split_t_B];
-                my $sub_t_span_2_B = [$split_t_B, $tsB->[1]];
+                my $sub_t_span_1_A = [$tsA->[$spanA->[3]?1:0], $split_t_A];
+                my $sub_t_span_2_A = [$split_t_A, $tsA->[$spanA->[3]?0:1]];
+                my $sub_t_span_1_B = [$tsB->[$spanB->[3]?1:0], $split_t_B];
+                my $sub_t_span_2_B = [$split_t_B, $tsB->[$spanB->[3]?0:1]];
 
                 #warn "re-call 1\n";
                 #warn "  [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]]\n";
