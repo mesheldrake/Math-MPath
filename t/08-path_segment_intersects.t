@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 59;
+use Test::More tests => 74;
 
 use Math::MPath;
 
@@ -76,6 +76,51 @@ ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
 ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
     && abs($intersections[0]->[1] -  6.9334) < 0.0001
     , 'A1oA1o offset circular arcs one intersection'
+);
+
+## AoLo ## offset elliptical arc and offset line intersection pair
+$mp_arc_seg  = Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1); # with islite flag
+$mp_line_seg = Math::MPath::LineSegment->new(  [2.0,5.0],            [32.0,28.0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_AoLo($mp_arc_seg,$mp_line_seg, 0.3, 0.2);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'AoLo two intersections');
+ok(    abs($intersections[0]->[0] -  6.1422) < 0.0001
+    && abs($intersections[0]->[1] -  8.2411) < 0.0001
+    , 'AoLo intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 29.3308) < 0.0001
+    && abs($intersections[1]->[1] - 26.0191) < 0.0001
+    , 'AoLo intersect pair, second'
+);
+
+## AoLo ## as above, with elliptical arc reversed
+$mp_arc_seg  = Math::MPath::EllipticalArc->new([35.0,26.0],[30,31],0,0,1,[4.0,0],0.00001,1); # with islite flag
+$mp_line_seg = Math::MPath::LineSegment->new(  [2.0,5.0],            [32.0,28.0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_AoLo($mp_arc_seg,$mp_line_seg, 0.3, 0.2);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'AoLo, Ao reversed, two intersections');
+ok(    abs($intersections[0]->[0] -  7.1836) < 0.0001
+    && abs($intersections[0]->[1] -  9.0395) < 0.0001
+    , 'AoLo, Ao reversed, intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 28.3160) < 0.0001
+    && abs($intersections[1]->[1] - 25.2410) < 0.0001
+    , 'AoLo, Ao reversed, intersect pair, second'
+);
+
+## AoLo ## as above, with line reversed
+$mp_arc_seg  = Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1); # with islite flag
+$mp_line_seg = Math::MPath::LineSegment->new(  [32.0,28.0],          [ 2.0, 5.0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_AoLo($mp_arc_seg,$mp_line_seg, 0.3, 0.2);
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'AoLo, Lo reversed, two intersections');
+ok(    abs($intersections[0]->[0] -  6.0534) < 0.0001
+    && abs($intersections[0]->[1] -  8.0422) < 0.0001
+    , 'AoLo, Lo reversed, intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 29.5409) < 0.0001
+    && abs($intersections[1]->[1] - 26.0493) < 0.0001
+    , 'AoLo, Lo reversed, intersect pair, second'
 );
 
 ## AoAo ## two offset elliptical arcs, one intersection
@@ -221,6 +266,22 @@ ok(    abs($intersections[1]->[0] - 28.2791) < 0.0001
     , 'CA intersect pair, second'
 );
 
+## CA ## same as above with Bezier control point reversed
+@intersections = Math::MPath::Intersections::intersect_CA(
+    Math::MPath::BezierCubicSegment->new([35.0,26.0],[23.0,24.0],[11.0,14.0],[4.0,0],0.00001,1),
+    Math::MPath::EllipticalArc->new([0,6.0],[30,31],0,0,1,[30.0,29.0],0.00001,1)
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'CA, C reversed, two intersections');
+ok(    abs($intersections[0]->[0] -  8.0254) < 0.0001
+    && abs($intersections[0]->[1] -  6.8414) < 0.0001
+    , 'CA, C reversed, intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 28.2791) < 0.0001
+    && abs($intersections[1]->[1] - 24.0560) < 0.0001
+    , 'CA, C reversed, intersect pair, second'
+);
+
 ## CoAo ## cubic Bezier and elliptical arc intersection where there are two intersections between decomposed sub sections of each OFFSET curve
 @intersections = Math::MPath::Intersections::intersect_CoAo(
     Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
@@ -304,6 +365,22 @@ ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
 ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
     && abs($intersections[1]->[1] - 22.8527) < 0.0001
     , 'CC pair second'
+);
+
+## CC ## same as above, but first Bezier control points reversed
+@intersections = Math::MPath::Intersections::intersect_CC(
+    Math::MPath::BezierCubicSegment->new([35.0,26.0],[23.0,24.0],[11.0,14.0],[4.0,0],0.00001,1),
+    Math::MPath::BezierCubicSegment->new([0,6.0],[13.0, 9.0],[24.0,19.0],[30.0,29.0],0.00001,1)
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'CC, first reversed, pair count == 2');
+ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
+    && abs($intersections[0]->[1] -  9.9952) < 0.0001
+    , 'CC, first reversed, pair first'
+);
+ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
+    && abs($intersections[1]->[1] - 22.8527) < 0.0001
+    , 'CC, first reversed, pair second'
 );
 
 ## CC ## as above, but with control points in reverse order for second Bezier
