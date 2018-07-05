@@ -717,13 +717,13 @@ sub constructSegment {
             return Math::MPath::BezierQuadraticSegment->new($lastpoints[$#lastpoints],$thesepoints[0],$thesepoints[0],$thesepoints[1],$self->{precision},$self->{isLite});
             }
         }
-    elsif ($segTypeLetter eq 'L') {return Math::MPath::LineSegment->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'H') {return Math::MPath::LineSegment->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'V') {return Math::MPath::LineSegment->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'M') {return Math::MPath::MoveTo->new(       $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'Z') {return Math::MPath::ClosePath->new(    $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'z') {return Math::MPath::ClosePath->new(    $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'A') {return Math::MPath::EllipticalArc->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'L') {return Math::MPath::LineSegment->new(          $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'H') {return Math::MPath::LineSegmentHorizontal->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'V') {return Math::MPath::LineSegmentVertical->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'M') {return Math::MPath::MoveTo->new(               $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'Z') {return Math::MPath::ClosePath->new(            $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'z') {return Math::MPath::ClosePath->new(            $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'A') {return Math::MPath::EllipticalArc->new(        $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
     }
 sub extractPointsFromPathSpec {
     my $self=shift;
@@ -783,8 +783,8 @@ sub getIntersections {
 my %ref2letter = (
     'Math::MPath::MoveTo'                 => 'M',
     'Math::MPath::ClosePath'              => 'Z',
-    'Math::MPath::HorizontalLineSegment'  => 'H',
-    'Math::MPath::VerticalLineSegment'    => 'V',
+    'Math::MPath::LineSegmentHorizontal'  => 'H',
+    'Math::MPath::LineSegmentVertical'    => 'V',
     'Math::MPath::LineSegment'            => 'L',
     'Math::MPath::EllipticalArc'          => 'A',
     'Math::MPath::BezierQuadraticSegment' => 'Q',
@@ -793,8 +793,8 @@ my %ref2letter = (
 my %ref2simplifiedletter = (
     'Math::MPath::MoveTo'                 => 'M',
     'Math::MPath::ClosePath'              => 'L',
-    'Math::MPath::HorizontalLineSegment'  => 'L',
-    'Math::MPath::VerticalLineSegment'    => 'L',
+    'Math::MPath::LineSegmentHorizontal'  => 'L',
+    'Math::MPath::LineSegmentVertical'    => 'L',
     'Math::MPath::LineSegment'            => 'L',
     'Math::MPath::EllipticalArc'          => 'A',
     'Math::MPath::BezierQuadraticSegment' => 'Q',
@@ -803,8 +803,8 @@ my %ref2simplifiedletter = (
 my %ref2precedence = (
     'Math::MPath::MoveTo'                 => 0,
     'Math::MPath::ClosePath'              => 0,
-    'Math::MPath::HorizontalLineSegment'  => 0,
-    'Math::MPath::VerticalLineSegment'    => 0,
+    'Math::MPath::LineSegmentHorizontal'  => 0,
+    'Math::MPath::LineSegmentVertical'    => 0,
     'Math::MPath::LineSegment'            => 0,
     'Math::MPath::EllipticalArc'          => 1,
     'Math::MPath::BezierQuadraticSegment' => 2,

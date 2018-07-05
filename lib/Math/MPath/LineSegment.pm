@@ -16,6 +16,18 @@ package Math::MPath::ClosePath;
 push @Math::MPath::ClosePath::ISA, 'Math::MPath::LineSegment';
 }
 ####################################################################################
+###      Math::MPath::LineSegmentHorizontal     #################################
+package Math::MPath::LineSegmentHorizontal;
+{
+push @Math::MPath::LineSegmentHorizontal::ISA, 'Math::MPath::LineSegment';
+}
+####################################################################################
+###      Math::MPath::LineSegmentVertical      #################################
+package Math::MPath::LineSegmentVertical;
+{
+push @Math::MPath::LineSegmentVertical::ISA, 'Math::MPath::LineSegment';
+}
+####################################################################################
 ###      Math::MPath::LineSegment   #############################################
 package Math::MPath::LineSegment;
 {
