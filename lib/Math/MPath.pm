@@ -70,6 +70,13 @@ sub constructSegments {
         if ($lastSegSpec =~ /^Z/i && $thisSegSpec !~ /^M/i) {$lastSegSpec=$lastM;} #per SVG spec - if no new M following Z, but something else, that something else is from last M
 
         # set H and V segments up so they get handled like LineTo
+        # TODO - Downstream tries to be ready to handle H and V, but
+        #        depends on extra coords injected here. Want to keep the
+        #        H and V letters, but they aren't valid svg SegSpec fragments
+        #        if they have both x and y coords. Maybe the thing to do is
+        #        delay the coord inject until downstream.
+        #        But make sure you don't mess up whatever you're doing with
+        #        M here.
         if ($thisSegSpec=~/^H/i) {
             $thisSegSpec=~s/\s//g;
             if ($i==1) {
