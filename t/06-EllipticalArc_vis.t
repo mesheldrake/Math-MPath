@@ -58,6 +58,11 @@ my $theta = $e5->theta_of_t($_);
             my $theta_of_xoff = -1 * atan2($e5->{ry}, -($e5->{ry}**2/$e5->{rx}) * tan($pi/2 - asin($xoff_of_theta/$offdist)));
 
 # This correction works sometimes, so theta_of_xoff() is probably basically correct, just needs some sign and phase fiddling.
+# ... later :
+# THIS IS experimentation I had to set aside in favor of a root finding approach
+# but if you did really find some kind of theta(offsetx) function here, that would be nice.
+# Keep this mess around a while in case you get a chance to re-figure out what this is
+# and whether you can really get it to always work.
 $theta_of_xoff = -$theta_of_xoff - $pi/2;
 
 if ($e5->{delta_theta} > 0) {while ($theta_of_xoff < $e5->{theta1}) {$theta_of_xoff += 2*$pi;}}
