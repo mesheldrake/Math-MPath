@@ -701,12 +701,28 @@ sub constructSegment {
             return Math::MPath::BezierCubicSegment->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});
             }
         }
-    elsif ($segTypeLetter eq 'L') {return Math::MPath::LineSegment->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'H') {return Math::MPath::LineSegment->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'V') {return Math::MPath::LineSegment->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-       elsif ($segTypeLetter eq 'M') {return Math::MPath::MoveTo->new(     $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'Z') {return Math::MPath::ClosePath->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
-    elsif ($segTypeLetter eq 'z') {return Math::MPath::ClosePath->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    # TRYING TO CHEAT HERE
+    if    ($segTypeLetter eq 'Q') {
+        if ( # check for degenerate curve
+            ($lastpoints[$#lastpoints]->[0] eq $thesepoints[0]->[0] && $lastpoints[$#lastpoints]->[0] eq $thesepoints[1]->[0]) ||
+            ($lastpoints[$#lastpoints]->[1] eq $thesepoints[0]->[1] && $lastpoints[$#lastpoints]->[1] eq $thesepoints[1]->[1])
+            ) {
+            my $ret=Math::MPath::LineSegment->new($lastpoints[$#lastpoints],$thesepoints[1],$self->{precision},$self->{isLite});
+            return $ret;
+            }
+        else {
+            # cheating for now: BezierQuadraticSegment is really just
+            # BezierCubicSegment with the two tangent handles on the same point
+            # Not sure if the will work everywhere.
+            return Math::MPath::BezierQuadraticSegment->new($lastpoints[$#lastpoints],$thesepoints[0],$thesepoints[0],$thesepoints[1],$self->{precision},$self->{isLite});
+            }
+        }
+    elsif ($segTypeLetter eq 'L') {return Math::MPath::LineSegment->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'H') {return Math::MPath::LineSegment->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'V') {return Math::MPath::LineSegment->new(  $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'M') {return Math::MPath::MoveTo->new(       $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'Z') {return Math::MPath::ClosePath->new(    $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
+    elsif ($segTypeLetter eq 'z') {return Math::MPath::ClosePath->new(    $lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
     elsif ($segTypeLetter eq 'A') {return Math::MPath::EllipticalArc->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});}
     }
 sub extractPointsFromPathSpec {
@@ -724,18 +740,8 @@ sub extractPointsFromPathSpec {
     elsif ($segTypeLetter eq 'Z') {push @ret , [split(/[ ,]+/,substr($segspec,1))]}
     elsif ($segTypeLetter eq 'z') {push @ret , [split(/[ ,]+/,substr($segspec,1))]}
     elsif ($segTypeLetter eq 'C') {my ($cp1x,$cp1y,$cp2x,$cp2y,$px,$py) = split(/[ ,]+/,substr($segspec,1));push @ret , ([$cp1x,$cp1y],[$cp2x,$cp2y],[$px,$py])}
+    elsif ($segTypeLetter eq 'Q') {my ($cp1x,$cp1y,$px,$py) = split(/[ ,]+/,substr($segspec,1));push @ret , ([$cp1x,$cp1y],[$px,$py])}
     elsif ($segTypeLetter eq 'A') {my ($rx,$ry,$phi,$lrgarc,$sweep,$px,$py) = split(/[ ,]+/,substr($segspec,1));push @ret , ([$rx,$ry],$phi,$lrgarc,$sweep,[$px,$py])}
-    # vestigal stuff probably related to "perlsize pathspec" efforts
-    #for (my $i=0;$i<@ret;$i++) {
-    #    if (ref($ret[$i]) eq 'ARRAY') {
-    #        foreach my $num (@{$ret[$i]}) {
-    #            my $sigdigits=0;
-    #            if ($num =~ /^-?([0-9]+\.[0-9]+[1-9])0*$/i) {$sigdigits=length($1) - 1;}
-    #            if ($num =~ /^-?0\.0*([1-9][0-9]+?[1-9])0*$/) {$sigdigits=length($1);} #small numbers that might fit in perl float
-    #            if ($num =~ /^-?([1-9][0-9]+?[1-9])0*\.?0*$/) {$sigdigits=length($1);} #big numbers that might fit in perl float
-    #            }
-    #        }
-    #    }
     
     return @ret;
     }
