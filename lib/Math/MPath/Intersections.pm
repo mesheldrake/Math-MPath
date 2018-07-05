@@ -38,7 +38,7 @@ use Math::MPath::QuadraticFormula;
 our $pi = 4 * atan2(1,1);
 
 sub intersect_LL {
-    my ($seg1, $seg2, $wantThetas) = @_;
+    my ($seg1, $seg2) = @_;
 
     my @ret;
 
@@ -113,13 +113,20 @@ sub intersect_LL {
 
     if (defined($segsegret)) {
         if ($wantThetas) {push(@ret,($m1 eq 'Inf')?$seg1->solveYforTheta($segsegret->[1]):$seg1->solveXforTheta($segsegret->[0]));}
-        else {push(@ret,$segsegret);}
+        my $theta1 = ($m1 eq 'Inf')?$seg1->solveYforTheta($segsegret->[1]):$seg1->solveXforTheta($segsegret->[0]);
+        my $theta2 = ($m2 eq 'Inf')?$seg2->solveYforTheta($segsegret->[1]):$seg2->solveXforTheta($segsegret->[0]);
+        push @$segsegret, $theta1, $theta2;
+        push(@ret,$segsegret);
     }
     return @ret;
 }
 
+# This one needs a rewrite. There's a better way to do this.
+# Look at your t(x) or t(y) code for EllipticalArcs, where you combine
+# the equation of a line with the Ellipse equations and solve for ellipse theta
+# which you would then convert to your normalized ellipse seg parameter.
 sub intersect_AL {
-    my ($arc, $line, $wantThetas, $lineIsSelf) = @_;
+    my ($arc, $line) = @_;
     my @ret;
     my @intersections;
     my $x1=$line->{p1}->[0];
@@ -130,14 +137,17 @@ sub intersect_AL {
     $y1-=$arc->{cy};
     $x2-=$arc->{cx};
     $y2-=$arc->{cy};
+
     if (
         ($line->{maxx}>$arc->{minx}  || $line->{maxx} eq $arc->{minx})&&
         ($line->{minx}<$arc->{maxx}  || $line->{minx} eq $arc->{maxx})&&
         ($line->{maxy}>$arc->{miny}  || $line->{maxy} eq $arc->{miny})&&
         ($line->{miny}<$arc->{maxy}  || $line->{miny} eq $arc->{maxy})
         ) {
-        my $rot_line_p1 = _rotate2d([0,0],[$x1,$y1],-1 * $arc->{phi_radians});
-        my $rot_line_p2 = _rotate2d([0,0],[$x2,$y2],-1 * $arc->{phi_radians});
+        my $rot_line_p1 = [ ($x1*cos(-$arc->{phi_radians}) - $y1*sin(-$arc->{phi_radians})),
+                            ($x1*sin(-$arc->{phi_radians}) + $y1*cos(-$arc->{phi_radians})) ];
+        my $rot_line_p2 = [ ($x2*cos(-$arc->{phi_radians}) - $y2*sin(-$arc->{phi_radians})),
+                            ($x2*sin(-$arc->{phi_radians}) + $y2*cos(-$arc->{phi_radians})) ];
 
         if (abs(($rot_line_p2->[0]-$rot_line_p1->[0]))>0.000001) { # had this at > 0.1, but that seems weak. make it smaller and see if it's a problem
             my $rot_line_slope=($rot_line_p2->[1]-$rot_line_p1->[1])/($rot_line_p2->[0]-$rot_line_p1->[0]);
@@ -164,7 +174,8 @@ sub intersect_AL {
             # (So four simple lines of code become a jumbled ugly eight.)
             # (plus eight more to comment on it all)
             my $h=sqrt($intersections[$i]->[0]**2 + $intersections[$i]->[1]**2);
-            $intersections[$i] = _rotate2d([0,0],$intersections[$i],$arc->{phi_radians});
+            $intersections[$i] = [ ($intersections[$i]->[0]*cos($arc->{phi_radians}) - $intersections[$i]->[1]*sin($arc->{phi_radians})),
+                                   ($intersections[$i]->[0]*sin($arc->{phi_radians}) + $intersections[$i]->[1]*cos($arc->{phi_radians})) ];
             my $sigcnt1=length(($arc->{cx}             =~/\.([0-9]*)/g)[0]) + length(($arc->{cx}             =~/([0-9]*)[0-9]\./g)[0]);
             my $sigcnt2=length(($intersections[$i]->[0]=~/\.([0-9]*)/g)[0]) + length(($intersections[$i]->[0]=~/([0-9]*)[0-9]\./g)[0]);
             $intersections[$i]->[0]+=$arc->{cx};
@@ -209,23 +220,24 @@ sub intersect_AL {
                                || (!$arc->{large_arc_flag} &&  $arc->isWithinSweep($_,$leg1,$leg2))
                          } @intersections;
 
-        if ($wantThetas) {
-            foreach my $int (@intersections) {
-                if ($lineIsSelf) {
-                    push(@ret,($line->{m} eq 'inf')?$line->solveYforTheta($int->[1]):$line->solveXforTheta($int->[0]));
-                }
-                else {
-                    my @allArcThetas=$arc->solveXforTheta($int->[0]);
-                    foreach my $t (@allArcThetas) {
-                        my $tp=$arc->point($t);
-                        if (abs($tp->[1] - $int->[1]) < 0.0000000001) {push(@ret,$t);}
-                    }
+
+        foreach my $int (@intersections) {
+            # this is a clunky old approach
+            my @allArcThetas=$arc->solveXforTheta($int->[0]);
+            foreach my $t (@allArcThetas) {
+                my $tp=$arc->point($t);
+                if (abs($tp->[1] - $int->[1]) < 0.0000000001) {
+                    push(@$int,$t);
+
                 }
             }
+            die "missed capturing an arc segment parameter in Arc Line intersect" if scalar(@$int) != 3;
+            push(@$int,($line->{m} eq 'inf')?$line->solveYforTheta($int->[1]):$line->solveXforTheta($int->[0]));
         }
-        else {
-            push(@ret,@intersections);
-        }
+    
+
+        push(@ret,@intersections);
+
     }
 
     return @ret;
@@ -236,7 +248,7 @@ sub intersect_AL {
 # at this point, but should revisit this math and improve with new features
 # of elliptical arc code if possible
 sub intersect_A1A1 {
-    my ($arc1, $arc2, $wantThetas) = @_;
+    my ($arc1, $arc2) = @_;
 
     my @ret;
 
@@ -328,18 +340,27 @@ sub intersect_A1A1 {
              || (!$arc2->{large_arc_flag} &&  $arc2->isWithinSweep($_,$leg1,$leg2))
             } @intersections;
 
-        if ($wantThetas) {
-            foreach my $int (@intersections) {
-                my @allArcThetas=$arc1->solveXforTheta($int->[0]);
-                foreach my $t (@allArcThetas) {
-                    my $tp=$arc1->point($t);
-                    if (abs($tp->[1] - $int->[1]) < 0.0000000001) {push(@ret,$t);}
-                    }
-                }
+
+        # a reason to revisit this - this is a bad approach for looking up
+        # the arc parameters. Whatever your approach is above, it should probably
+        # have calculated these already, and more reliably.
+        foreach my $int (@intersections) {
+            my @allArcThetas=$arc1->solveXforTheta($int->[0]);
+            foreach my $t (@allArcThetas) {
+                my $tp=$arc1->point($t);
+                if (abs($tp->[1] - $int->[1]) < 0.0000000001) {push(@$int,$t);}
             }
-        else {
-            push(@ret,@intersections);
+            die "missed capturing an arc segment parameter in Arc Line intersect (1)" if scalar(@$int) != 3;
+            @allArcThetas=$arc2->solveXforTheta($int->[0]);
+            foreach my $t (@allArcThetas) {
+                my $tp=$arc2->point($t);
+                if (abs($tp->[1] - $int->[1]) < 0.0000000001) {push(@$int,$t);}
             }
+            die "missed capturing an arc segment parameter in Arc Line intersect (2)" if scalar(@$int) != 4;
+        }
+
+        push(@ret,@intersections);
+
         }
 
     return @ret;
@@ -347,7 +368,7 @@ sub intersect_A1A1 {
 }
 
 sub intersect_CL {
-    my ($curve, $line, $wantThetas, $lineIsSelf) = @_;
+    my ($curve, $line) = @_;
     my @ret;
 
     # t^3 + [(F-mB)/(E-mA)]t^2 + [(G-mC)/(E-mA)]t + [(H-mD-x0)/(E-mA)] = 0
@@ -361,63 +382,46 @@ sub intersect_CL {
     # First some special cases for vertical and horizontal lines.
     my @thetas;
     if ($line->{m} eq 'inf' || $line->{m} eq '-inf') {
-        @thetas = $curve->solveXforTheta($line->{maxx});
-        foreach my $t (@thetas) {
+        @ts = $curve->solveXforTheta($line->{maxx});
+        foreach my $t (@ts) {
             my $y = $curve->bezierEvalYofT($t);
             if (($y < $line->{maxy} || $y eq $line->{maxy}) &&
                 ($y > $line->{miny} || $y eq $line->{miny})) {
-                if ($wantThetas) {
-                    if (!$lineIsSelf) {push(@ret,$t);}
-                    else {push(@ret,$line->solveYforTheta($y));}
-                }
-                else {push(@ret,[$line->{maxx},$y]);}
+                push(@ret,[$line->{maxx},$y,$t,$line->solveYforTheta($y)]);
             }
         }
     }
     elsif ($line->{m} eq 0) {
-        if ($wantThetas && !$lineIsSelf) {
-            my @ths = $curve->solveYforTheta($line->{p1}->[1]);
-            push(@ret, grep {my $p=$curve->point($_); ($p->[0] < $line->{maxx} || $p->[0] eq $line->{maxx}) && ($p->[0] > $line->{minx} || $p->[0] eq $line->{minx})} @ths);
-        }
-        else {
-            # do F(y) to get possible x vals from bezier
-            my @xs = $curve->F($line->{p1}->[1]);
-            # then filter to what's actually within line segment bounds
-            # also, the reason this zero slope thing is handled seperately
-            # is that we make sure the resulting y values are exactly the horizontal line's y value
-            if ($wantThetas) {
-                push(@ret,map { $line->solveXforTheta($_)} @xs);
-            }
-            else {
-                my @intersections = map {[$_,$line->{p1}->[1]]} grep { ($_ < $line->{maxx} || $_ eq $line->{maxx}) && ($_ > $line->{minx} || $_ eq $line->{minx})} @xs;
-                push(@ret,@intersections);
+        @ts = $curve->solveYforTheta($line->{p1}->[1]);
+        foreach my $t (@ts) {
+            my $x = $curve->bezierEvalXofT($t);
+            if (($x < $line->{maxx} || $x eq $line->{maxx}) &&
+                ($x > $line->{minx} || $x eq $line->{minx})) {
+                push(@ret,[$x,$line->{p1}->[1],$t,$line->solveXforTheta($x)]);
             }
         }
     }
     else {
 
-        @thetas = &cubicformula(
+        @ts = &cubicformula(
             ($curve->{F}-$line->{m}*$curve->{B})            / ($curve->{E}-$line->{m}*$curve->{A}),
             ($curve->{G}-$line->{m}*$curve->{C})            / ($curve->{E}-$line->{m}*$curve->{A}),
             ($curve->{H}-$line->{m}*$curve->{D}-$line->{b}) / ($curve->{E}-$line->{m}*$curve->{A}),
             1);
 
-        @thetas = sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)}  @thetas;
+        @ts = sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)}  @ts;
 
-        foreach my $t (@thetas) {
+        foreach my $t (@ts) {
             my $x = $curve->bezierEvalXofT($t);
             if (($x < $line->{maxx} || $x eq $line->{maxx}) &&
                 ($x > $line->{minx} || $x eq $line->{minx})) {
-                if ($wantThetas) {
-                    if (!$lineIsSelf) {push(@ret,$t);}
-                    else {push(@ret,$line->solveXforTheta($x));}
-                }
-                else {push(@ret,[$x,$curve->bezierEvalYofT($t)]);}
+                push(@ret,[$x,$curve->bezierEvalYofT($t),$t,$line->solveXforTheta($x)]);
             }
         }
     }
     return @ret;
 }
+
 sub intersect_CC {
 
     # returns list of intersections and the corresponding Bezier parameters
@@ -559,7 +563,11 @@ sub intersect_CC {
                                              [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                              );
 
-                push @ret, @int1, @int2;
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
             }
             else {
                 #warn "no pair";
@@ -711,7 +719,11 @@ sub intersect_CA {
                                              [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                              );
 
-                push @ret, @int1, @int2;
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
             }
             else {
                 #warn "no pair";
@@ -732,7 +744,7 @@ sub intersect_CA {
 ################################################################################
 
 sub intersect_LoLo {
-    my ($lineA, $lineB, $offA, $offB, $wantThetas) = @_;
+    my ($lineA, $lineB, $offA, $offB) = @_;
 
     my $lineA = Math::MPath::LineSegment->new(
         [ $lineA->{p1}->[0] + $offA * cos($lineA->{angleNormal}),
@@ -747,11 +759,16 @@ sub intersect_LoLo {
           $lineB->{p2}->[1] + $offB * sin($lineB->{angleNormal}) ]
     );
 
-    return intersect_LL($lineA, $lineB, $wantThetas);
+    return intersect_LL($lineA, $lineB);
 }
 
 sub intersect_A1oLo {
-    my ($arc, $line, $offCircle, $offLine, $wantThetas, $lineIsSelf) = @_;
+    my ($arc, $line, $offCircle, $offLine) = @_;
+
+    # will the parameters at intersections for these temporary offset segs
+    # really correspond to the parameter you would use with the original
+    # seg, with seg->point(t), to get that same intersection point?
+    # Sounds like you need a test for that.
 
     my $arc_off_radius = $arc->{rx} + $offCircle;
     my $arc_off = Math::MPath::EllipticalArc->new(
@@ -772,11 +789,13 @@ sub intersect_A1oLo {
           $line->{p2}->[1] + $offLine * sin($line->{angleNormal}) ]
     );
 
-    return intersect_AL($arc_off, $line_off, $wantThetas, $lineIsSelf);
+    return intersect_AL($arc_off, $line_off);
 }
 
 sub intersect_A1oA1o {
     my ($arcA, $arcB, $offA, $offB, $wantThetas) = @_;
+
+    # see parameter correspondence question in intersect_A1oLo()
 
     my $arcA_off_radius = $arcA->{rx} + $offA;
     my $arcA_off = Math::MPath::EllipticalArc->new(
@@ -1025,7 +1044,11 @@ sub intersect_AoLo {
                                              [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                              );
 
-                push @ret, @int1, @int2;
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
             }
             else {
                 #warn "no pair";
@@ -1270,7 +1293,11 @@ sub intersect_AoAo {
                                                  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                                  );
 
-                    push @ret, @int1, @int2;
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
                 }
                 else {
                     #warn "no pair";
@@ -1515,7 +1542,11 @@ sub intersect_CoAo {
                                                  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                                  );
 
-                    push @ret, @int1, @int2;
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
                 }
                 else {
                     #warn "no pair";
@@ -1701,10 +1732,6 @@ sub intersect_CoCo {
                 # TODO
                 # Need to confirm this in test cases that push the limits of this math
                 # - need to work out the math for where those limits are, to make those test cases.
-                
-                # TODO
-                # In the meantime, need to apply the same *-1 fixes here, and a few other little changes later
-                # to all the other offset intersection functions that were copy-paste-adapted from this one, and make test cases for them with reversed segments.
 
                 my $y_diff_prime = sub {
                     my $tA = $bezA->t_from_xoff($_[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1],$spanA->[3]);
@@ -1796,7 +1823,11 @@ sub intersect_CoCo {
                                                  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                                  );
 
-                    push @ret, @int1, @int2;
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
                 }
                 else {
                     #warn "no pair";
@@ -2044,7 +2075,11 @@ sub intersect_CoLo {
                                              [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                              );
 
-                push @ret, @int1, @int2;
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
             }
             else {
                 #warn "no pair";
@@ -2060,14 +2095,6 @@ sub intersect_CoL {
     my ($bezA, $lineB, $offA) = @_;
     return intersect_CoLo($bezA, $lineB, $offA, 0);
 }
-
-sub _rotate2d {
-    my ($origin,$point,$angle) = @_;
-    my $dx=($point->[0]-$origin->[0]);
-    my $dy=($point->[1]-$origin->[1]);
-    #{a c-b d, a d+b c}
-    return [$origin->[0] + ($dx*cos($angle) - $dy*sin($angle)),$origin->[1] + ($dx*sin($angle) + $dy*cos($angle))];
-    }
 
 } # end package
 1;

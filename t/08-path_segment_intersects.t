@@ -7,17 +7,13 @@ use Test::More tests => 74;
 
 use Math::MPath;
 
-my $mp1;
-my $mp2;
-my $mp_line_seg;
-my $mp_arc_seg;
-my $mp_bez_seg;
 my @intersections;
 
 ## LL ##
-$mp1 = Math::MPath->newlite('M10,10L20,1',0.00001);
-$mp2 = Math::MPath->newlite('M9,1  L21,11',0.00001);
-@intersections = $mp1->getIntersections($mp2);
+@intersections = Math::MPath::Intersections::intersect_LoLo(
+    Math::MPath::LineSegment->new([10,10],[20, 1],0.00001),
+    Math::MPath::LineSegment->new([ 9, 1],[21,11],0.00001)
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.71) < 0.01
     && abs($intersections[0]->[1] -  5.76) < 0.01
@@ -28,7 +24,8 @@ ok(    abs($intersections[0]->[0] - 14.71) < 0.01
 @intersections = Math::MPath::Intersections::intersect_LoLo(
     Math::MPath::LineSegment->new([10,10],[20, 1]),
     Math::MPath::LineSegment->new([ 9, 1],[21,11]),
-    0.3,0.2,0
+    0.3,
+    0.2
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.6288) < 0.0001
@@ -37,9 +34,10 @@ ok(    abs($intersections[0]->[0] - 14.6288) < 0.0001
 );
 
 ## AL ## general elliptical arc and line
-$mp1 = Math::MPath->newlite('M10,10A30,31,0,0,0,20,1',0.00001);
-$mp2 = Math::MPath->newlite('M9,1  L21,11',0.00001);
-@intersections = $mp1->getIntersections($mp2);
+@intersections = Math::MPath::Intersections::intersect_AL(
+    Math::MPath::EllipticalArc->new([10,10],[30,31],0,0,0,[20,1],0.00001,1),
+    Math::MPath::LineSegment->new(  [ 9, 1],[21,11],0.00001,1)
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 15.2972) < 0.0001
     && abs($intersections[0]->[1] -  6.2477) < 0.0001
@@ -47,9 +45,12 @@ ok(    abs($intersections[0]->[0] - 15.2972) < 0.0001
 );
 
 ## A1oLo ## offset circular arc and offset line (wrapper for AL)
-$mp_arc_seg = Math::MPath::EllipticalArc->new([10,10],[30,30],0,0,0,[20,1],0.00001,1);
-$mp_line_seg = Math::MPath::LineSegment->new([9,1],[21,11],0.00001,1);
-@intersections = Math::MPath::Intersections::intersect_A1oLo($mp_arc_seg,$mp_line_seg,0.3,0.2,0,0);
+@intersections = Math::MPath::Intersections::intersect_A1oLo(
+    Math::MPath::EllipticalArc->new([10,10],[30,30],0,0,0,[20,1],0.00001,1),
+    Math::MPath::LineSegment->new([9,1],[21,11],0.00001,1),
+    0.3,
+    0.2
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 15.4485) < 0.0001
     && abs($intersections[0]->[1] -  6.1134) < 0.0001
@@ -57,15 +58,15 @@ ok(    abs($intersections[0]->[0] - 15.4485) < 0.0001
 );
 
 ## A1A1 ## special case of two circular elliptical arcs
-$mp1 = Math::MPath->newlite('M10,10A30,30,0,0,0,20,1',0.00001);
-$mp2 = Math::MPath->newlite('M9,1  A30,30,0,0,0,21,11',0.00001);
-@intersections = $mp1->getIntersections($mp2);
+@intersections = Math::MPath::Intersections::intersect_A1A1(
+    Math::MPath::EllipticalArc->new([10,10],[30,30],0,0,0,[20, 1],0.00001,1),
+    Math::MPath::EllipticalArc->new([ 9, 1],[30,30],0,0,0,[21,11],0.00001,1)
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
     && abs($intersections[0]->[1] -  6.9334) < 0.0001
     , 'A1A1 circular arcs one intersection'
 );
-
 ## A1oA1o ## special case of two offset circular elliptical arcs - wrapper for A1A1
 @intersections = Math::MPath::Intersections::intersect_A1oA1o(
     Math::MPath::EllipticalArc->new([10,10],[30,30],0,0,0,[20, 1],0.00001,1),
@@ -79,9 +80,12 @@ ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
 );
 
 ## AoLo ## offset elliptical arc and offset line intersection pair
-$mp_arc_seg  = Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1); # with islite flag
-$mp_line_seg = Math::MPath::LineSegment->new(  [2.0,5.0],            [32.0,28.0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_AoLo($mp_arc_seg,$mp_line_seg, 0.3, 0.2);
+@intersections = Math::MPath::Intersections::intersect_AoLo(
+    Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1),
+    Math::MPath::LineSegment->new(  [2.0,5.0],            [32.0,28.0],0.00001,1),
+    0.3,
+    0.2
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'AoLo two intersections');
 ok(    abs($intersections[0]->[0] -  6.1422) < 0.0001
@@ -94,24 +98,30 @@ ok(    abs($intersections[1]->[0] - 29.3308) < 0.0001
 );
 
 ## AoLo ## as above, with elliptical arc reversed
-$mp_arc_seg  = Math::MPath::EllipticalArc->new([35.0,26.0],[30,31],0,0,1,[4.0,0],0.00001,1); # with islite flag
-$mp_line_seg = Math::MPath::LineSegment->new(  [2.0,5.0],            [32.0,28.0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_AoLo($mp_arc_seg,$mp_line_seg, 0.3, 0.2);
+@intersections = Math::MPath::Intersections::intersect_AoLo(
+    Math::MPath::EllipticalArc->new([35.0,26.0],[30,31],0,0,1,[4.0,0],0.00001,1),
+    Math::MPath::LineSegment->new(  [2.0,5.0],            [32.0,28.0],0.00001,1),
+    0.3,
+    0.2
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'AoLo, Ao reversed, two intersections');
-ok(    abs($intersections[0]->[0] -  7.1836) < 0.0001
-    && abs($intersections[0]->[1] -  9.0395) < 0.0001
+ok(    abs($intersections[0]->[0] - 28.3160) < 0.0001
+    && abs($intersections[0]->[1] - 25.2410) < 0.0001
     , 'AoLo, Ao reversed, intersect pair, first'
 );
-ok(    abs($intersections[1]->[0] - 28.3160) < 0.0001
-    && abs($intersections[1]->[1] - 25.2410) < 0.0001
+ok(    abs($intersections[1]->[0] -  7.1836) < 0.0001
+    && abs($intersections[1]->[1] -  9.0395) < 0.0001
     , 'AoLo, Ao reversed, intersect pair, second'
 );
 
 ## AoLo ## as above, with line reversed
-$mp_arc_seg  = Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1); # with islite flag
-$mp_line_seg = Math::MPath::LineSegment->new(  [32.0,28.0],          [ 2.0, 5.0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_AoLo($mp_arc_seg,$mp_line_seg, 0.3, 0.2);
+@intersections = Math::MPath::Intersections::intersect_AoLo(
+    Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1),
+    Math::MPath::LineSegment->new(  [32.0,28.0],          [ 2.0, 5.0],0.00001,1),
+    0.3,
+    0.2
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'AoLo, Lo reversed, two intersections');
 ok(    abs($intersections[0]->[0] -  6.0534) < 0.0001
@@ -160,13 +170,13 @@ ok(    abs($intersections[1]->[0] - 28.8309) < 0.0001
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'AoAo, first reversed, two intersections');
-ok(    abs($intersections[0]->[0] -  6.1159) < 0.0001
-    && abs($intersections[0]->[1] -  6.6375) < 0.0001
-    , 'AoAo, first reversed, intersect pair, first'
-);
-ok(    abs($intersections[1]->[0] - 28.5805) < 0.0001
-    && abs($intersections[1]->[1] - 25.2893) < 0.0001
+ok(    abs($intersections[0]->[0] - 28.5805) < 0.0001
+    && abs($intersections[0]->[1] - 25.2893) < 0.0001
     , 'AoAo, first reversed, intersect pair, second'
+);
+ok(    abs($intersections[1]->[0] -  6.1159) < 0.0001
+    && abs($intersections[1]->[1] -  6.6375) < 0.0001
+    , 'AoAo, first reversed, intersect pair, first'
 );
 
 ## AoAo ## as above, but second reversed
@@ -186,9 +196,10 @@ ok(    abs($intersections[1]->[0] - 29.2832) < 0.0001
     , 'AoAo, second reversed, intersect pair, second'
 );
 ## CL ##
-$mp1 = Math::MPath->newlite('M10,10C13,10,16,8,20,1',0.00001);
-$mp2 = Math::MPath->newlite('M9,1  L21,11',0.00001);
-@intersections = $mp1->getIntersections($mp2);
+@intersections = Math::MPath::Intersections::intersect_CL(
+    Math::MPath::BezierCubicSegment->new([10,10],[13,10],[16,8],[20,1],0.00001,1),
+    Math::MPath::LineSegment->new(       [9,1],                 [21,11],0.00001,1)
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 15.9727) < 0.0001
     && abs($intersections[0]->[1] -  6.8106) < 0.0001
@@ -196,9 +207,12 @@ ok(    abs($intersections[0]->[0] - 15.9727) < 0.0001
 );
 
 ## CoLo ##
-$mp_bez_seg  = Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1); # with islite flag
-$mp_line_seg = Math::MPath::LineSegment->new(       [0,3.0],                        [30.0,26.0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_CoLo($mp_bez_seg,$mp_line_seg, 0.3, 0.2);
+@intersections = Math::MPath::Intersections::intersect_CoLo(
+    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
+    Math::MPath::LineSegment->new(       [0,3.0],                        [30.0,26.0],0.00001,1),
+    0.3,
+    0.2
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 11.5659) < 0.0001
     && abs($intersections[0]->[1] - 11.9326) < 0.0001
@@ -210,22 +224,29 @@ ok(    abs($intersections[1]->[0] - 27.2036) < 0.0001
 );
 
 ## CoLo ##
-$mp_bez_seg  = Math::MPath::BezierCubicSegment->new([35.0,26.0],[23.0,24.0],[11.0,14.0],[4.0,0],0.00001,1); # with islite flag
-$mp_line_seg = Math::MPath::LineSegment->new(       [3.0,4.0],                        [33.0,27.0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_CoLo($mp_bez_seg,$mp_line_seg, 0.3, 0.2);
-#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(    abs($intersections[0]->[0] - 10.7367) < 0.0001
-    && abs($intersections[0]->[1] -  9.9969) < 0.0001
-    , 'CoLo, Co reversed, intersect pair, first'
+@intersections = Math::MPath::Intersections::intersect_CoLo(
+    Math::MPath::BezierCubicSegment->new([35.0,26.0],[23.0,24.0],[11.0,14.0],[4.0,0],0.00001,1),
+    Math::MPath::LineSegment->new(       [3.0,4.0],                        [33.0,27.0],0.00001,1),
+    0.3,
+    0.2
 );
-ok(    abs($intersections[1]->[0] - 29.0594) < 0.0001
-    && abs($intersections[1]->[1] - 24.0443) < 0.0001
+#diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(    abs($intersections[0]->[0] - 29.0594) < 0.0001
+    && abs($intersections[0]->[1] - 24.0443) < 0.0001
     , 'CoLo, Co reversed, intersect pair, second'
 );
+ok(    abs($intersections[1]->[0] - 10.7367) < 0.0001
+    && abs($intersections[1]->[1] -  9.9969) < 0.0001
+    , 'CoLo, Co reversed, intersect pair, first'
+);
+
 ## CoLo ##
-$mp_bez_seg  = Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1); # with islite flag
-$mp_line_seg = Math::MPath::LineSegment->new(       [30.0,26.0],                    [ 0,   3.0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_CoLo($mp_bez_seg,$mp_line_seg, 0.3, 0.2);
+@intersections = Math::MPath::Intersections::intersect_CoLo(
+    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
+    Math::MPath::LineSegment->new(       [30.0,26.0],                    [ 0,   3.0],0.00001,1),
+    0.3,
+    0.2
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 11.2407) < 0.0001
     && abs($intersections[0]->[1] - 11.5524) < 0.0001
@@ -237,9 +258,11 @@ ok(    abs($intersections[1]->[0] - 27.6025) < 0.0001
 );
 
 ## CoL ##
-$mp_bez_seg  = Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1); # with islite flag
-$mp_line_seg = Math::MPath::LineSegment->new([0,3.0],[30.0,26.0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_CoL($mp_bez_seg,$mp_line_seg, 0.3);
+@intersections = Math::MPath::Intersections::intersect_CoL(
+    Math::MPath::BezierCubicSegment->new([4.0,0],[11.0,14.0],[23.0,24.0],[35.0,26.0],0.00001,1),
+    Math::MPath::LineSegment->new([0,3.0],[30.0,26.0],0.00001,1),
+    0.3
+);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 11.4011) < 0.0001
     && abs($intersections[0]->[1] - 11.7408) < 0.0001
@@ -273,13 +296,13 @@ ok(    abs($intersections[1]->[0] - 28.2791) < 0.0001
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'CA, C reversed, two intersections');
-ok(    abs($intersections[0]->[0] -  8.0254) < 0.0001
-    && abs($intersections[0]->[1] -  6.8414) < 0.0001
-    , 'CA, C reversed, intersect pair, first'
-);
-ok(    abs($intersections[1]->[0] - 28.2791) < 0.0001
-    && abs($intersections[1]->[1] - 24.0560) < 0.0001
+ok(    abs($intersections[0]->[0] - 28.2791) < 0.0001
+    && abs($intersections[0]->[1] - 24.0560) < 0.0001
     , 'CA, C reversed, intersect pair, second'
+);
+ok(    abs($intersections[1]->[0] -  8.0254) < 0.0001
+    && abs($intersections[1]->[1] -  6.8414) < 0.0001
+    , 'CA, C reversed, intersect pair, first'
 );
 
 ## CoAo ## cubic Bezier and elliptical arc intersection where there are two intersections between decomposed sub sections of each OFFSET curve
@@ -310,16 +333,15 @@ ok( @intersections > 1
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'CoAo, Co reversed, two intersections');
-ok( @intersections > 0
-    && abs($intersections[0]->[0] -  8.5357) < 0.0001
-    && abs($intersections[0]->[1] -  7.0521) < 0.0001
-    , 'CoAo, Co reversed, intersect pair, first'
-);
-
 ok( @intersections > 1
-    && abs($intersections[1]->[0] - 28.1136) < 0.0001
-    && abs($intersections[1]->[1] - 23.6622) < 0.0001
+    && abs($intersections[0]->[0] - 28.1136) < 0.0001
+    && abs($intersections[0]->[1] - 23.6622) < 0.0001
     , 'CoAo, Co reversed, intersect pair, second'
+);
+ok( @intersections > 0
+    && abs($intersections[1]->[0] -  8.5357) < 0.0001
+    && abs($intersections[1]->[1] -  7.0521) < 0.0001
+    , 'CoAo, Co reversed, intersect pair, first'
 );
 
 ## CoAo ## as above, but just arc reversed - reverse end points AND sweep flag
@@ -343,8 +365,8 @@ ok( @intersections > 1
 );
 
 ## CC ## cubic Bezier loop self-intersect case
-$mp_bez_seg = Math::MPath::BezierCubicSegment->new([0,0],[200,80],[-100,80],[100,0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_CC($mp_bez_seg,$mp_bez_seg);
+my $bez = Math::MPath::BezierCubicSegment->new([0,0],[200,80],[-100,80],[100,0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_CC($bez,$bez);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(    abs($intersections[0]->[0] - 50) < 0.0001
     && abs($intersections[0]->[1] - 24) < 0.0001
@@ -374,13 +396,13 @@ ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'CC, first reversed, pair count == 2');
-ok(    abs($intersections[0]->[0] - 10.3517) < 0.0001
-    && abs($intersections[0]->[1] -  9.9952) < 0.0001
-    , 'CC, first reversed, pair first'
-);
-ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
-    && abs($intersections[1]->[1] - 22.8527) < 0.0001
+ok(    abs($intersections[0]->[0] - 25.6583) < 0.0001
+    && abs($intersections[0]->[1] - 22.8527) < 0.0001
     , 'CC, first reversed, pair second'
+);
+ok(    abs($intersections[1]->[0] - 10.3517) < 0.0001
+    && abs($intersections[1]->[1] -  9.9952) < 0.0001
+    , 'CC, first reversed, pair first'
 );
 
 ## CC ## as above, but with control points in reverse order for second Bezier
@@ -401,8 +423,8 @@ ok(    abs($intersections[1]->[0] - 25.6583) < 0.0001
 );
 
 ## CoCo ## same looped bezier but two different offsets; should intersect two times
-$mp_bez_seg = Math::MPath::BezierCubicSegment->new([0,0],[200,80],[-100,80],[100,0],0.00001,1); # with islite flag
-@intersections = Math::MPath::Intersections::intersect_CoCo($mp_bez_seg,$mp_bez_seg, 0.3, 0.2);
+my $bez_to_offset = Math::MPath::BezierCubicSegment->new([0,0],[200,80],[-100,80],[100,0],0.00001,1); # with islite flag
+@intersections = Math::MPath::Intersections::intersect_CoCo($bez_to_offset, $bez_to_offset, 0.3, 0.2);
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok( scalar(@intersections) == 2 , 'CoCo self intersect, two intersections');
 ok( @intersections
@@ -429,7 +451,6 @@ ok( @intersections > 0
     && abs($intersections[0]->[1] - 10.0306) < 0.0001
     , 'CoCo pair, first'
 );
-
 ok( @intersections > 1
     && abs($intersections[1]->[0] - 25.6850) < 0.0001
     && abs($intersections[1]->[1] - 23.2022) < 0.0001
@@ -450,7 +471,6 @@ ok( @intersections > 0
     && abs($intersections[0]->[1] -  9.2694) < 0.0001
     , 'CoCo pair, 2nd reversed, first'
 );
-
 ok( @intersections > 1
     && abs($intersections[1]->[0] - 26.5203) < 0.0001
     && abs($intersections[1]->[1] - 23.6083) < 0.0001
@@ -465,16 +485,15 @@ ok( @intersections > 1
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'CoCo pair, 1st reversed, count == 2');
-ok( @intersections > 0
-    && abs($intersections[0]->[0] - 11.4126) < 0.0001
-    && abs($intersections[0]->[1] - 10.8243) < 0.0001
-    , 'CoCo pair, 1st reversed, first'
-);
-
 ok( @intersections > 1
-    && abs($intersections[1]->[0] - 24.6784) < 0.0001
-    && abs($intersections[1]->[1] - 21.9952) < 0.0001
+    && abs($intersections[0]->[0] - 24.6784) < 0.0001
+    && abs($intersections[0]->[1] - 21.9952) < 0.0001
     , 'CoCo pair, 1st reversed, second'
+);
+ok( @intersections > 0
+    && abs($intersections[1]->[0] - 11.4126) < 0.0001
+    && abs($intersections[1]->[1] - 10.8243) < 0.0001
+    , 'CoCo pair, 1st reversed, first'
 );
 
 ## CoCo ## this time control points reversed on both Beziers
@@ -485,16 +504,15 @@ ok( @intersections > 1
 );
 #diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'CoCo pair, both reversed, count == 2');
-ok( @intersections > 0
-    && abs($intersections[0]->[0] - 10.7108) < 0.0001
-    && abs($intersections[0]->[1] -  9.9646) < 0.0001
-    , 'CoCo pair, both reversed, first'
-);
-
 ok( @intersections > 1
-    && abs($intersections[1]->[0] - 25.6269) < 0.0001
-    && abs($intersections[1]->[1] - 22.4997) < 0.0001
+    && abs($intersections[0]->[0] - 25.6269) < 0.0001
+    && abs($intersections[0]->[1] - 22.4997) < 0.0001
     , 'CoCo pair, both reversed, second'
+);
+ok( @intersections > 0
+    && abs($intersections[1]->[0] - 10.7108) < 0.0001
+    && abs($intersections[1]->[1] -  9.9646) < 0.0001
+    , 'CoCo pair, both reversed, first'
 );
 
 1;
