@@ -6,6 +6,7 @@ use Math::MPath::BezierQuadraticSegment;
 use Math::MPath::LineSegment;
 use Math::MPath::EllipticalArc;
 use Math::MPath::Intersections;
+use Math::MPath::Function::Root qw(BrentsMethod FalsePosition);
 
 ######################### start copy-paste of old MikePath guts
 ### Please edit and improve drastically.
@@ -17,8 +18,8 @@ use vars qw($VERSION);
 use strict;
 use warnings;
 use Carp qw(cluck croak);
-use Math::MPath::Function::Root qw(BrentsMethod FalsePosition);
 use POSIX qw();
+
 $VERSION = '0.01';
 
 our $enableCarefulFofy=1;
@@ -772,80 +773,149 @@ sub getIntersections {
         }
     return @intersects;
     }
+
+my %ref2letter = (
+    'Math::MPath::MoveTo'                 => 'M',
+    'Math::MPath::ClosePath'              => 'Z',
+    'Math::MPath::HorizontalLineSegment'  => 'H',
+    'Math::MPath::VerticalLineSegment'    => 'V',
+    'Math::MPath::LineSegment'            => 'L',
+    'Math::MPath::EllipticalArc'          => 'A',
+    'Math::MPath::BezierQuadraticSegment' => 'Q',
+    'Math::MPath::BezierCubicSegment'     => 'C',
+);
+my %ref2simplifiedletter = (
+    'Math::MPath::MoveTo'                 => 'M',
+    'Math::MPath::ClosePath'              => 'L',
+    'Math::MPath::HorizontalLineSegment'  => 'L',
+    'Math::MPath::VerticalLineSegment'    => 'L',
+    'Math::MPath::LineSegment'            => 'L',
+    'Math::MPath::EllipticalArc'          => 'A',
+    'Math::MPath::BezierQuadraticSegment' => 'Q',
+    'Math::MPath::BezierCubicSegment'     => 'C',
+);
+my %ref2precedence = (
+    'Math::MPath::MoveTo'                 => 0,
+    'Math::MPath::ClosePath'              => 0,
+    'Math::MPath::HorizontalLineSegment'  => 0,
+    'Math::MPath::VerticalLineSegment'    => 0,
+    'Math::MPath::LineSegment'            => 0,
+    'Math::MPath::EllipticalArc'          => 1,
+    'Math::MPath::BezierQuadraticSegment' => 2,
+    'Math::MPath::BezierCubicSegment'     => 3,
+);
 sub getSegSegIntersects {
-    my $seg1=shift;
-    my $seg2=shift;
+    my ($seg1,$seg2) = @_;
+    my $swap = 0;
+    if ($ref2precedence{ref($seg2)} > $ref2precedence{ref($seg1)}) {
+        $swap = 1;
+        ($seg1,$seg2) = ($seg2,$seg1);
+    }
     my $wantThetas = scalar(@_) ? shift:0;
     my $refstrings = ref($seg1).'--'.ref($seg2);
+    my $letter1 = $ref2simplifiedletter{ref($seg1)}
+                . (exists $seg1->{rx} && $seg1->{rx} == $seg1->{ry} ? '1':'');
+    my $letter2 = $ref2simplifiedletter{ref($seg2)}
+                . (exists $seg2->{rx} && $seg2->{rx} == $seg2->{ry} ? '1':'');
+    my $case = $letter1 . ($seg1->{offset}?'o':'')
+             . $letter2 . ($seg2->{offset}?'o':'');
     my @ret;
 
-    if ($refstrings=~/(LineSegment|ClosePath).*?--/ && $refstrings=~/--.*?(LineSegment|ClosePath)/) {
-        push @ret, Math::MPath::Intersections::intersect_LL($seg1,$seg2,$wantThetas);
-        }
-    # elliptical arc-line
-    elsif (($refstrings=~/LineSegment/ || $refstrings=~/ClosePath/) && $refstrings=~/EllipticalArc/) {
-        my $line;
-        my $arc;
-        my $lineIsSelf;
-        if ($refstrings=~/LineSegment.*?--/ || $refstrings=~/ClosePath.*?--/) {
-            $lineIsSelf=1;
-            ($line,$arc) = ($seg1,$seg2);
-        }
-        else {
-            $lineIsSelf=0;
-            ($line,$arc) = ($seg2,$seg1);
-        }
+    # what should results of all these look like?
+    # think [x,y,seg1_t,seg2_t] will do
 
-        push @ret, Math::MPath::Intersections::intersect_AL($arc, $line, $wantThetas, $lineIsSelf);
+    if    ($case eq 'LL') {              push @ret, Math::MPath::Intersections::intersect_LL($seg1,$seg2);}
+    elsif ($case eq 'LoL' ||
+           $case eq 'LLo' ||
+           $case eq 'LoLo'
+    ) {                                  push @ret, Math::MPath::Intersections::intersect_LoLo($seg1,$seg2);}
 
-        }
-    # circle-circle special (but common) case
-    elsif (   $refstrings=~/EllipticalArc.*?--/ && $refstrings=~/--.*?EllipticalArc/
-           && $seg1->{rx} eq $seg1->{ry}
-           && $seg2->{rx} eq $seg2->{ry}
-          ) {
+    elsif ($case eq 'A1L' ||
+           $case eq 'AL'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_AL($seg1,$seg2);}
+    elsif ($case eq 'A1oL' ||
+           $case eq 'A1Lo' ||
+           $case eq 'A1oLo'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_A1oLo($seg1,$seg2)}
 
-        push @ret, Math::MPath::Intersections::intersect_A1A1($seg1, $seg2, $wantThetas);
+    elsif ($case eq 'A1A1') {            push @ret, Math::MPath::Intersections::intersect_A1A1($seg1, $seg2);}
+    elsif ($case eq 'A1oA1' ||
+           $case eq 'A1A1o' ||
+           $case eq 'A1oA1o'
+    )                       {            push @ret, Math::MPath::Intersections::intersect_A1oA1o($seg1, $seg2);}
 
-        }
-    # general ellipse-ellipse case
-    elsif (   $refstrings=~/EllipticalArc.*?--/ && $refstrings=~/--.*?EllipticalArc/ ) {
-        # will be kinda hairy. probably needs quartic solver, unless
-        # you can find shortcut due to working with arcs and not full ellipses, in general
-        # or unless you cook up a quick (to code) rootfinding appoach
-        die "elliptical arc--elliptical arc intersection not handled yet (when both aren't circular arcs)";
-        # probably do similar to cubic Bezier intersections in Intersections.pm
+    elsif ($case eq 'AA'  ||
+           $case eq 'A1A' ||
+           $case eq 'AA1'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_AA($seg1, $seg2);}
 
-        #push @ret, Math::MPath::Intersections::intersect_AA($seg1, $seg2, $wantThetas);
+    elsif ($case eq 'AoA'   ||
+           $case eq 'AAo'   ||
+           $case eq 'AoAo'  ||
+           $case eq 'A1oA'  ||
+           $case eq 'A1Ao'  ||
+           $case eq 'A1oAo' ||
+           $case eq 'AoA1'  ||
+           $case eq 'AA1o'  ||
+           $case eq 'AoA1o'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_AA($seg1, $seg2);}
 
-        }
-    # cubic Bezier-line
-    elsif (($refstrings=~/LineSegment/ || $refstrings=~/ClosePath/) && $refstrings=~/BezierCubicSegment/) {
-        my $line;
-        my $curve;
-        my $lineIsSelf;
-        if ($refstrings=~/LineSegment.*?--/ || $refstrings=~/ClosePath.*?--/) {
-            $lineIsSelf=1;
-            ($line,$curve) = ($seg1,$seg2);
-        }
-        else {
-            $lineIsSelf=0;
-            ($line,$curve) = ($seg2,$seg1);
-        }
+    elsif ($case eq 'QL') {              push @ret, Math::MPath::Intersections::intersect_CL($seg1,$seg2);}
+    elsif ($case eq 'QoL' ||
+           $case eq 'QLo' ||
+           $case eq 'QoLo'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CoLo($seg1,$seg2);}
+    elsif ($case eq 'QA1' ||
+           $case eq 'QA'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CA($seg1,$seg2);}
+    elsif ($case eq 'QoA' ||
+           $case eq 'QAo' ||
+           $case eq 'QoAo' ||
+           $case eq 'QoA1' ||
+           $case eq 'QA1o' ||
+           $case eq 'QoA1o'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CoAo($seg1,$seg2);}
+    elsif ($case eq 'QQ') {              push @ret, Math::MPath::Intersections::intersect_CC($seg1,$seg2);}
+    elsif ($case eq 'QoQ' ||
+           $case eq 'QQo' ||
+           $case eq 'QoQo'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CoCo($seg1,$seg2);}
 
-        push @ret, Math::MPath::Intersections::intersect_CL($curve, $line, $wantThetas, $lineIsSelf);
+    elsif ($case eq 'CL') {              push @ret, Math::MPath::Intersections::intersect_CL($seg1, $seg2);}
+    elsif ($case eq 'CoL' ||
+           $case eq 'CLo' ||
+           $case eq 'CoLo'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CoLo($seg1, $seg2);}
+    elsif ($case eq 'CA1' ||
+           $case eq 'CA'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CA($seg1,$seg2);}
+    elsif ($case eq 'CoA' ||
+           $case eq 'CAo' ||
+           $case eq 'CoAo' ||
+           $case eq 'CoA1' ||
+           $case eq 'CA1o' ||
+           $case eq 'CoA1o'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CoAo($seg1,$seg2);}
+    elsif ($case eq 'CQ') {              push @ret, Math::MPath::Intersections::intersect_CC($seg1,$seg2);}
+    elsif ($case eq 'CoQ' ||
+           $case eq 'CQo' ||
+           $case eq 'CoQo'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CoCo($seg1,$seg2);}
+    elsif ($case eq 'CC') {              push @ret, Math::MPath::Intersections::intersect_CC($seg1,$seg2);}
+    elsif ($case eq 'CoC' ||
+           $case eq 'CCo' ||
+           $case eq 'CoCo'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_CoCo($seg1,$seg2);}
+    else {die "unrecognized segment intersection"; }
 
-        }
-    # cubic Bezier-elliptical Arc
-    elsif (   $refstrings=~/BezierCubicSegment.*?--/ && $refstrings=~/--.*?EllipticalArc/ ) {
-        my @ret = Math::MPath::Intersections::intersect_CA($seg1,$seg2);
-    }
-    elsif (   $refstrings=~/EllipticalArc.*?--/ && $refstrings=~/--.*?BezierCubicSegment/ ) {
-        my @ret = Math::MPath::Intersections::intersect_CA($seg2,$seg1);
-    }
-    # cubic Bezier-cubic Bezier
-    elsif (   $refstrings=~/BezierCubicSegment.*?--/ && $refstrings=~/--.*?BezierCubicSegment/ ) {
-        my @ret = Math::MPath::Intersections::intersect_CC($seg1,$seg2);
+    # Want intersections sorted from perspective of the first segment originally passed in.
+    # Each of the intersection functions should do that with respect to the
+    # order of the segments passed to it, but we may have swapped the order before that.
+    # If so, rearrange the results.
+
+    if ($swap) {
+        if (scalar(@ret) == 1) {$ret[0] = [$ret[0]->[0],$ret[0]->[1],$ret[0]->[3],$ret[0]->[2]];}
+        else {@ret = sort {$a->[2]<=>$b->[2]} map {[$_->[0],$_->[1],$_->[3],$_->[2]]} @ret;}
     }
 
     return @ret;
