@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 74;
+use Test::More tests => 77;
 
 use Math::MPath;
 
@@ -143,6 +143,22 @@ ok(    abs($intersections[1]->[0] - 29.8363) < 0.0001
 ok(    abs($intersections[0]->[0] - 14.5850) < 0.0001
     && abs($intersections[0]->[1] -  7.2472) < 0.0001
     , 'AoAo one intersection'
+);
+
+## AA ## two elliptical arcs, two intersections within one sub section
+@intersections = Math::MPath::Intersections::intersect_AA(
+    Math::MPath::EllipticalArc->new([4.0,0],[30,31],0,0,0,[35.0,26.0],0.00001,1),
+    Math::MPath::EllipticalArc->new([0,6.0],[30,31],0,0,1,[30.0,29.0],0.00001,1)
+);
+#diag("intersection pair count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
+ok(scalar(@intersections) == 2, 'AoAo two intersections');
+ok(    abs($intersections[0]->[0] -  5.6871) < 0.0001
+    && abs($intersections[0]->[1] -  6.3611) < 0.0001
+    , 'AoAo intersect pair, first'
+);
+ok(    abs($intersections[1]->[0] - 28.9369) < 0.0001
+    && abs($intersections[1]->[1] - 25.6543) < 0.0001
+    , 'AoAo intersect pair, second'
 );
 
 ## AoAo ## two offset elliptical arcs, two intersections within one sub section

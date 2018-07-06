@@ -367,6 +367,202 @@ sub intersect_A1A1 {
 
 }
 
+sub intersect_AA {
+
+    # just intersect_CC, adapted for arcs
+
+    my ($arcA, $arcB, $lutA, $lutB) = @_;
+
+    my $XtoTLUT_A = $lutA ? $lutA : $arcA->{XtoTLUT};
+    my $XtoTLUT_B = $lutB ? $lutB : $arcB->{XtoTLUT};
+
+    my @ret;
+
+    my %aseen;
+
+    foreach my $spanA (@{$XtoTLUT_A}) {
+
+        #$aseen{$spanA}={} if !$aseen{$spanA};
+
+        foreach my $spanB (@{$XtoTLUT_B}) {
+
+        # avoid duplicate runs when looking for self intersection
+        #next if $spanA == $spanB;
+        #next if $aseen{$spanA}->{$spanB};
+        #$aseen{$spanB}->{$spanA}++;
+
+        next if ($spanA->[1]->[0] > $spanB->[1]->[-1]);
+        next if ($spanB->[1]->[0] > $spanA->[1]->[-1]);
+
+        my $spanx=[];
+        my $tsA=[];
+        my $tsB=[];
+
+        if ($spanA->[1]->[0] eq $spanB->[1]->[0]) {
+            $spanx->[0] = $spanA->[1]->[0];
+            $tsA->[0] = $spanA->[2]->[0];
+            $tsB->[0] = $spanB->[2]->[0];
+        }
+        elsif ($spanA->[1]->[0] > $spanB->[1]->[0]) {
+            $spanx->[0] = $spanA->[1]->[0];
+            $tsA->[0] = $spanA->[2]->[0];
+            #$tsB->[0] = $arcB->t_from_xoff($spanx->[0],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+            $tsB->[0] = $spanB->[0]->[0]->($spanx->[0]);
+        }
+        else {
+            $spanx->[0] = $spanB->[1]->[0];
+            $tsB->[0] = $spanB->[2]->[0];
+            #$tsA->[0] = $arcA->t_from_xoff($spanx->[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+            $tsA->[0] = $spanA->[0]->[0]->($spanx->[0]);
+        }
+        if ($spanA->[1]->[-1] eq $spanB->[1]->[-1]) {
+            $spanx->[1] = $spanA->[1]->[-1];
+            $tsA->[1] = $spanA->[2]->[-1];
+            $tsB->[1] = $spanB->[2]->[-1];
+        }
+        elsif ($spanA->[1]->[-1] < $spanB->[1]->[-1]) {
+            $spanx->[1] = $spanA->[1]->[-1];
+            $tsA->[1] = $spanA->[2]->[-1];
+            #$tsB->[1] = $arcB->t_from_xoff($spanx->[1],$offB,[$spanB->[2]->[0],$spanB->[2]->[-1]],$spanB->[0]->[1]);
+            $tsB->[1] = $spanB->[0]->[0]->($spanx->[1]);
+        }
+        else {
+            $spanx->[1] = $spanB->[1]->[-1];
+            $tsB->[1] = $spanB->[2]->[-1];
+            #$tsA->[1] = $arcA->t_from_xoff($spanx->[1],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1]);
+            $tsA->[1] = $spanA->[0]->[0]->($spanx->[1]);
+        }
+
+        my $ysA = [$arcA->evalYofTheta($tsA->[0]),$arcA->evalYofTheta($tsA->[1])];
+        my $ysB = [$arcB->evalYofTheta($tsB->[0]),$arcB->evalYofTheta($tsB->[1])];
+
+        #warn "xspan:\n $spanx->[0],$spanx->[1]\n";
+        #warn "ts:\n $tsA->[0],$tsA->[1]\n $tsB->[0],$tsB->[1]\n";
+        #warn "ys:\n $ysA->[0],$ysA->[1]\n $ysB->[0],$ysB->[1]\n";
+
+        # one intersection case, similar to how you'd test for crossing line segments
+        if    (($ysA->[0] > $ysB->[0] && $ysA->[0] ne $ysB->[0] &&
+                $ysA->[1] < $ysB->[1] && $ysA->[1] ne $ysB->[1]   ) ||
+               ($ysA->[0] < $ysB->[0] && $ysA->[0] ne $ysB->[0] &&
+                $ysA->[1] > $ysB->[1] && $ysA->[1] ne $ysB->[1]   )
+              ) {
+
+            my $findintarcarc = sub {
+                # Y1(t1) - Y2(t2(X1(t1))) secret sauce ingredient
+                return $arcA->evalYofTheta($_[0]) - $arcB->evalYofTheta( $spanB->[0]->[0]->( $arcA->evalXofTheta($_[0]) ) );
+            };
+            my $bounds_tA = ($tsA->[0] < $tsA->[1]) ? [$tsA->[0],$tsA->[1]] : [$tsA->[1],$tsA->[0]];
+            my ($int_t_A,$msg)=BrentsMethod($findintarcarc,$bounds_tA,0.00001,undef,'subArc-subArc intersection finding');
+
+            my $intersection_x = $arcA->evalXofTheta($int_t_A);
+            my $intersection_y = $arcA->evalYofTheta($int_t_A);
+
+            $int_t_B = $spanB->[0]->[0]->($intersection_x);
+
+            push @ret, [$intersection_x,$intersection_y,$int_t_A,$int_t_B];
+        }
+        # catch any endpoint overlap "intersections"
+        elsif (   $ysA->[0] eq $ysB->[0] || $ysA->[1] eq $ysB->[1]
+               || $ysA->[1] eq $ysB->[0] || $ysA->[0] eq $ysB->[1]
+              ) {
+            # what is the policy on this?
+            # when checking for self intersections, def don't want these
+            # but for diff bezs, these could sometimes be legit intersections
+            #push @ret, ["xoverlap","yoverlap"] if $arcA != $arcB;
+        }
+        # the zero or two intersection case
+        else {
+
+            warn "failed to find one intersection when a special LUT was provided\n" if defined($lutA) || defined($lutB);
+            next if defined($lutA) || defined($lutB);
+
+            # zero intersections if y ranges don't overlap
+            my ($lowyA,$highyA) = ($ysA->[0]<$ysA->[1]) ? (@$ysA) : (reverse @$ysA);
+            my ($lowyB,$highyB) = ($ysB->[0]<$ysB->[1]) ? (@$ysB) : (reverse @$ysB);
+            next if ($lowyA > $highyB);
+            next if ($lowyB > $highyA);
+
+            # zero or two intersections
+
+            # more secret sauce
+            # if g(t1) = [Y1(t1) - Y2(t2(X1(t1))) ]'
+            # crosses zero over the t1 parameter range [$tsA->[0],$tsA->[1]]
+            # then there are two intersections in that range.
+            # We can then root find to find the parameter for that zero crossing,
+            # and use that to split the parameter range, guaranteeing one
+            # intersection on each of the two new split parameter ranges.
+            # We can then re-call this intersection subroutine, specifying those
+            # new ranges to operate on.
+
+            my $y_diff_prime = sub {
+                my $ret =
+                $arcA->evalYPrimeofTheta($_[0])
+                -
+                $arcB->evalYPrimeofTheta( $spanB->[0]->[0]->( $arcA->evalXofTheta($_[0]) ) )
+                *
+                $spanB->[0]->[1]->($arcA->evalXofTheta($_[0]))
+                *
+                $arcA->evalXPrimeofTheta($_[0]);
+                return $ret;
+            };
+
+            my $at_start = $y_diff_prime->($tsA->[0]);
+            my $at_end   = $y_diff_prime->($tsA->[1]);
+
+            #warn "ydiffprime start, end: $at_start, $at_end\n";
+
+            if ($at_start > 0 && $at_end < 0 || $at_start < 0 && $at_end > 0) {
+
+                my $bounds_tA = ($tsA->[0] < $tsA->[1]) ? [$tsA->[0],$tsA->[1]] : [$tsA->[1],$tsA->[0]];
+                my ($split_t_A,$msg)=BrentsMethod($y_diff_prime,$bounds_tA,0.00001,undef,'subArc-subArc intersection finding - find pair split parameter');
+
+                my $span_split_x = $arcA->evalXofTheta($split_t_A);
+                
+                #warn "split: $span_split_x\n";
+
+                $split_t_B = $spanB->[0]->[0]->($span_split_x);
+
+                # set up new LUTs to pass to a re-call of this intersection sub
+                # so re-call run will have proper x bounds to find each of
+                # the intersection pair individually.
+
+                my $sub_t_span_1_A = [$tsA->[0], $split_t_A];
+                my $sub_t_span_2_A = [$split_t_A, $tsA->[1]];
+                my $sub_t_span_1_B = [$tsB->[0], $split_t_B];
+                my $sub_t_span_2_B = [$split_t_B, $tsB->[1]];
+
+                #warn "[[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?@$sub_t_span_2_A:@$sub_t_span_1_A, $spanA->[3]]]\n";
+                #warn "[[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?@$sub_t_span_2_B:@$sub_t_span_1_B, $spanB->[3]]]\n";
+                my @int1 = intersect_AA($arcA,$arcB,
+                                             [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]],
+                                             [[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?$sub_t_span_2_B:$sub_t_span_1_B, $spanB->[3]]]
+                                             );
+
+                #warn "[[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?@$sub_t_span_1_A:@$sub_t_span_2_A, $spanA->[3]]]\n";
+                #warn "[[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?@$sub_t_span_1_B:@$sub_t_span_2_B, $spanB->[3]]]\n";
+                my @int2 = intersect_AA($arcA,$arcB,
+                                             [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]],
+                                             [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
+                                             );
+
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+
+                push @ret, $int1[0]->[2] <= $int2[0]->[2]
+                           ? ($int1[0],$int2[0])
+                           : ($int2[0],$int1[0]);
+            }
+            else {
+                #warn "no pair";
+            }
+
+        }
+
+        }
+    }
+
+    return @ret;
+}
+
 sub intersect_CL {
     my ($curve, $line) = @_;
     my @ret;
