@@ -9,8 +9,7 @@ use Math::BigFloat;
 #my $epsilon=0.00000000000001;
 sub quadraticformula
 	{
-	my ($a, $b, $c);
-	($a, $b, $c) = @_;
+	my ($a, $b, $c) = @_;
 	$realonly=@_?shift:0;
 	my $im = '';
 #okay, first problem: how do we know wether 0.000000001 is close enough to zero to be considered zero?
