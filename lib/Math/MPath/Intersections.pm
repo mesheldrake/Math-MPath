@@ -746,6 +746,10 @@ sub intersect_CA {
 sub intersect_LoLo {
     my ($lineA, $lineB, $offA, $offB) = @_;
 
+    $offA //= (exists($lineA->{offset})?$lineA->{offset}:0);
+    $offB //= (exists($lineB->{offset})?$lineB->{offset}:0);
+    return intersect_LL($lineA, $lineB) if (!$offA && !$offB);
+
     my $lineA = Math::MPath::LineSegment->new(
         [ $lineA->{p1}->[0] + $offA * cos($lineA->{angleNormal}),
           $lineA->{p1}->[1] + $offA * sin($lineA->{angleNormal}) ],
@@ -764,6 +768,10 @@ sub intersect_LoLo {
 
 sub intersect_A1oLo {
     my ($arc, $line, $offCircle, $offLine) = @_;
+
+    $offCircle //= (exists($arc->{offset})?$arc->{offset}:0);
+    $offLine //= (exists($line->{offset})?$line->{offset}:0);
+    return intersect_AL($arc, $line) if (!$offCircle && !$offLine);
 
     # will the parameters at intersections for these temporary offset segs
     # really correspond to the parameter you would use with the original
@@ -793,7 +801,11 @@ sub intersect_A1oLo {
 }
 
 sub intersect_A1oA1o {
-    my ($arcA, $arcB, $offA, $offB, $wantThetas) = @_;
+    my ($arcA, $arcB, $offA, $offB) = @_;
+
+    $offA //= (exists($arcA->{offset})?$arcA->{offset}:0);
+    $offB //= (exists($arcB->{offset})?$arcB->{offset}:0);
+    return intersect_A1A1($arcA, $arcB) if (!$offA && !$offB);
 
     # see parameter correspondence question in intersect_A1oLo()
 
@@ -828,6 +840,10 @@ sub intersect_AoLo {
     # just adapting all the Bezier stuff to be arc stuff.
 
     my ($arcA, $lineB, $offA, $offB, $lutA, $lutB) = @_;
+
+    $offA //= (exists($arcA->{offset})?$arcA->{offset}:0);
+    $offB //= (exists($lineB->{offset})?$lineB->{offset}:0);
+    return intersect_AL($arcA, $lineB, $lutA, $lutB) if (!$offA && !$offB);
 
     if (!$lutB && !exists $lineB->{XtoTLUT}) {
         # too complex probably for line segments, but hack it in here while adapting this bez-bez algo to work with bez-line
@@ -926,17 +942,19 @@ sub intersect_AoLo {
                 $ysA->[1] > $ysB->[1] && $ysA->[1] ne $ysB->[1]   )
               ) {
 
-            my $findintbezline = sub {
+            my $findintarcline = sub {
                 # need Yoff1(t1(xoff)) - Yoff2(t2(xoff))
                 my $t1 = $arcA->t_from_xoff($_[0],$offA,[$spanA->[2]->[0],$spanA->[2]->[-1]],$spanA->[0]->[1],$spanA->[3]);
                 my $t2 = $lineB->t_from_xoff($_[0],$offB);
                 my $yoff1 = $arcA->Y_offset($t1,$offA,$spanA->[0]->[1],$spanA->[3]);
+                #warn "### E($t1) $offA : ",($yoff1 - $arcA->evalYofTheta($t1)),"\n";
                 my $yoff2 = $lineB->Y_offset($t2,$offB);
-                return $yoff2 - $yoff1;
+                #warn "### L($t2) $offB : ",($yoff2 - $lineB->point($t2)->[1]),"\n";
+                return $yoff1 - $yoff2;
             };
 
             my $bounds_xoff = [$spanx->[0],$spanx->[1]];
-            my ($int_xoff,$msg)=BrentsMethod($findintbezline,$bounds_xoff,0.00001,undef,'subArcOff-lineOff intersection finding');
+            my ($int_xoff,$msg)=BrentsMethod($findintarcline,$bounds_xoff,0.00001,undef,'subArcOff-lineOff intersection finding');
 
             if ($msg) { warn "subArcOff-lineOff message: $msg\n"; }
             else {
@@ -1035,16 +1053,17 @@ sub intersect_AoLo {
                                              [[$spanA->[0],[$spanx->[0]  , $span_split_x], $spanA->[3]?$sub_t_span_2_A:$sub_t_span_1_A, $spanA->[3]]],
                                              [[$spanB->[0],[$spanx->[0]  , $span_split_x], $spanB->[3]?$sub_t_span_2_B:$sub_t_span_1_B, $spanB->[3]]]
                                              );
+
                 #warn "re-call 2\n";
-                #warn "  [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]]\n";
-                #warn "  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]\n";
+                #warn "  [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?@$sub_t_span_1_A:@$sub_t_span_2_A, $spanA->[3]]]\n";
+                #warn "  [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?@$sub_t_span_1_B:@$sub_t_span_2_B, $spanB->[3]]]\n";
 
                 my @int2 = intersect_AoLo($arcA,$lineB,$offA,$offB,
                                              [[$spanA->[0],[$span_split_x, $spanx->[1]  ], $spanA->[3]?$sub_t_span_1_A:$sub_t_span_2_A, $spanA->[3]]],
                                              [[$spanB->[0],[$span_split_x, $spanx->[1]  ], $spanB->[3]?$sub_t_span_1_B:$sub_t_span_2_B, $spanB->[3]]]
                                              );
 
-                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
+                warn "expecting two intersections but got [",(scalar(@int1)," + ",scalar(@int2)),"]offs:[$offA,$offB]" if (scalar(@int1) != 1 || scalar(@int2) != 1);
 
                 push @ret, $int1[0]->[2] <= $int2[0]->[2]
                            ? ($int1[0],$int2[0])
@@ -1070,6 +1089,10 @@ sub intersect_AoAo {
     # two intersection case
 
     my ($arcA, $arcB, $offA, $offB, $lutA, $lutB) = @_;
+
+    $offA //= (exists($arcA->{offset})?$arcA->{offset}:0);
+    $offB //= (exists($arcB->{offset})?$arcB->{offset}:0);
+    return intersect_AA($arcA, $arcB, $lutA, $lutB) if (!$offA && !$offB);
 
     my $XtoTLUT_A = $lutA ? $lutA : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$arcA->{XtoTLUT}}];
     my $XtoTLUT_B = $lutB ? $lutB : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$arcB->{XtoTLUT}}];
@@ -1318,6 +1341,10 @@ sub intersect_CoAo {
     # two intersection case
 
     my ($bezA, $arcB, $offA, $offB, $lutA, $lutB) = @_;
+
+    $offA //= (exists($bezA->{offset})?$bezA->{offset}:0);
+    $offB //= (exists($arcB->{offset})?$arcB->{offset}:0);
+    return intersect_CA($bezA, $arcB, $lutA, $lutB) if (!$offA && !$offB);
 
     my $XtoTLUT_A = $lutA ? $lutA : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$bezA->{XtoTLUT}}];
     my $XtoTLUT_B = $lutB ? $lutB : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$arcB->{XtoTLUT}}];
@@ -1572,6 +1599,10 @@ sub intersect_CoCo {
     # two intersection case
 
     my ($bezA, $bezB, $offA, $offB, $lutA, $lutB) = @_;
+
+    $offA //= (exists($bezA->{offset})?$bezA->{offset}:0);
+    $offB //= (exists($bezB->{offset})?$bezB->{offset}:0);
+    return intersect_CC($bezA, $bezB, $lutA, $lutB) if (!$offA && !$offB);
 
     my $XtoTLUT_A = $lutA ? $lutA : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$bezA->{XtoTLUT}}];
     my $XtoTLUT_B = $lutB ? $lutB : [map [$_->[0],[$_->[1]->[0],$_->[1]->[-1]],[$_->[2]->[0],$_->[2]->[-1]],$_->[3]], @{$bezB->{XtoTLUT}}];
@@ -1844,6 +1875,10 @@ sub intersect_CoLo {
     # line part of the math.
 
     my ($bezA, $lineB, $offA, $offB, $lutA, $lutB) = @_;
+    
+    $offA //= (exists($bezA->{offset})?$bezA->{offset}:0);
+    $offB //= (exists($lineB->{offset})?$lineB->{offset}:0);
+    return intersect_CL($bezA, $lineB, $lutA, $lutB) if (!$offA && !$offB);
 
     if (!$lutB && !exists $lineB->{XtoTLUT}) {
         # too complex probably for line segments, but hack it in here while adapting this bez-bez algo to work with bez-line
@@ -1863,10 +1898,16 @@ sub intersect_CoLo {
 
     # assume any provided LUTs already contain offset Xs in their x range entries
     # otherwise we need to do that now for the LUT copies we made
+    #my $lcnt=0;
     if (!defined($lutA)) {
         foreach my $span (@{$XtoTLUT_A}) {
+            #warn "lcnt: $lcnt\n";
+            #$lcnt++;
+            #warn "hello colo1 [$bezA->{p1}->[0],$bezA->{p1}->[1]],[$bezA->{cp1}->[0],$bezA->{cp1}->[1]],[$bezA->{cp2}->[0],$bezA->{cp2}->[1]],[$bezA->{p2}->[0],$bezA->{p2}->[1]], $span->[2]->[0],$offA\n";
             $span->[1]->[0]  = $bezA->X_offset($span->[2]->[0] ,$offA,$span->[0]->[1],$span->[3]);
+            #warn "hello colo2 [$bezA->{p1}->[0],$bezA->{p1}->[1]],[$bezA->{cp1}->[0],$bezA->{cp1}->[1]],[$bezA->{cp2}->[0],$bezA->{cp2}->[1]],[$bezA->{p2}->[0],$bezA->{p2}->[1]], $span->[2]->[-1],$offA\n";
             $span->[1]->[-1] = $bezA->X_offset($span->[2]->[-1],$offA,$span->[0]->[1],$span->[3]);
+            #warn "hello colo3\n";
         }
     }
 
@@ -1893,6 +1934,7 @@ sub intersect_CoLo {
         # skip if x spans don't overlap
         next if ($spanA->[1]->[0] > $spanB->[1]->[-1]);
         next if ($spanB->[1]->[0] > $spanA->[1]->[-1]);
+
 
         # x clipping to minimum x span that's valid for both lut entry spans
 
@@ -1929,10 +1971,6 @@ sub intersect_CoLo {
 
         my $ysA = [$bezA->Y_offset($tsA->[0],$offA,$spanA->[0]->[1],$spanA->[3]),$bezA->Y_offset($tsA->[1],$offA,$spanA->[0]->[1],$spanA->[3])];
         my $ysB = [$lineB->Y_offset($tsB->[0],$offB),$lineB->Y_offset($tsB->[1],$offB)];
-
-        # warn "spanx:\n $spanx->[0],$spanx->[1]\n";
-        # warn "ts:\n $tsA->[0],$tsA->[1]\n $tsB->[0],$tsB->[1]\n";
-        # warn "ys:\n $ysA->[0],$ysA->[1]\n $ysB->[0],$ysB->[1]\n";
 
         # one intersection case, similar to how you'd test for crossing line segments
         if    (($ysA->[0] > $ysB->[0] && $ysA->[0] ne $ysB->[0] &&
@@ -2091,6 +2129,7 @@ sub intersect_CoLo {
     return @ret;
 
 }
+
 sub intersect_CoL {
     my ($bezA, $lineB, $offA) = @_;
     return intersect_CoLo($bezA, $lineB, $offA, 0);

@@ -54,7 +54,7 @@ sub new {
     $self->{dx}=$self->{p2}->[0] - $self->{p1}->[0];
     $self->{dy}=$self->{p2}->[1] - $self->{p1}->[1];
     $self->{angleTangent}=atan2($self->{dy},$self->{dx});
-    $self->{angleNormal}=atan2(-$self->{dx},$self->{dy});
+    $self->{angleNormal}=atan2($self->{dx},-$self->{dy});
     $self->{length} = sqrt(($self->{p2}->[0] - $self->{p1}->[0])**2 + ($self->{p2}->[1] - $self->{p1}->[1])**2);
     $self->{length_big} = undef; # BigFloat used in point(theta) if theta is a ref. Create there only if needed.
     return $self;
@@ -259,7 +259,8 @@ sub point_offset {
 sub X_offset {
     my ($self, $t, $distance) = @_;
     my ($x) = @{$self->point($t)};
-    $x += -($self->{dy}/$self->{length}) * $distance;
+    $x -= ($self->{dy}/$self->{length}) * $distance;
+    #warn "huh: $x += ($self->{dy}/$self->{length}) * $distance;\n";
     return $x;
 }
 sub Y_offset {
@@ -274,6 +275,7 @@ sub t_from_xoff {
     if (0 + $offset_length ne '0') {
         $non_offset_x -= $offset_length * cos($self->{angleNormal});
     }
+    #warn "in there? $self->{minx} <= $non_offset_x <= $self->{maxx} , [$offsetx, $offset_length,$self->{angleNormal},",cos($self->{angleNormal}),"]\n";
     return $self->solveXforTheta($non_offset_x);
 }
 

@@ -312,7 +312,7 @@ sub new {
         my $xb = $self->evalXofTheta($tb);
         my $ya = $self->evalYofTheta($ta);
         my $yb = $self->evalYofTheta($tb);
-        my $isReversed = $xa > $xb;
+        my $isReversed = $xa > $xb ? 1 : 0;
 
         my $angle_mid = $self->theta_of_t($tmid);
 
@@ -740,6 +740,7 @@ sub Y_offset {
     my $y = $self->evalYofTheta($t);
     my $a = $self->angleNormal_byTheta($t);
     $y += sin($a) * $distance;
+    #warn "Y_offset:  $distance ",((180/$pi)*$a)," y: $y + yoff:",(sin($a) * $distance),"\n";
     return $y;
 }
 

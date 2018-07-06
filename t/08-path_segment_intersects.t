@@ -28,8 +28,8 @@ ok(    abs($intersections[0]->[0] - 14.71) < 0.01
     0.2
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(    abs($intersections[0]->[0] - 14.6288) < 0.0001
-    && abs($intersections[0]->[1] -  5.4303) < 0.0001
+ok(    abs($intersections[0]->[0] - 14.7941) < 0.0001
+    && abs($intersections[0]->[1] -  6.0888) < 0.0001
     , 'LoLo offset line segment intersection'
 );
 
@@ -52,8 +52,8 @@ ok(    abs($intersections[0]->[0] - 15.2972) < 0.0001
     0.2
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(    abs($intersections[0]->[0] - 15.4485) < 0.0001
-    && abs($intersections[0]->[1] -  6.1134) < 0.0001
+ok(    abs($intersections[0]->[0] - 15.1452) < 0.0001
+    && abs($intersections[0]->[1] -  6.3813) < 0.0001
     , 'A1oLo offset circular arc and offset line one intersection'
 );
 
@@ -88,12 +88,12 @@ ok(    abs($intersections[0]->[0] - 14.5053) < 0.0001
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'AoLo two intersections');
-ok(    abs($intersections[0]->[0] -  6.1422) < 0.0001
-    && abs($intersections[0]->[1] -  8.2411) < 0.0001
+ok(    abs($intersections[0]->[0] -  6.2733) < 0.0001
+    && abs($intersections[0]->[1] -  8.5282) < 0.0001
     , 'AoLo intersect pair, first'
 );
-ok(    abs($intersections[1]->[0] - 29.3308) < 0.0001
-    && abs($intersections[1]->[1] - 26.0191) < 0.0001
+ok(    abs($intersections[1]->[0] - 29.0269) < 0.0001
+    && abs($intersections[1]->[1] - 25.9726) < 0.0001
     , 'AoLo intersect pair, second'
 );
 
@@ -106,12 +106,12 @@ ok(    abs($intersections[1]->[0] - 29.3308) < 0.0001
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'AoLo, Ao reversed, two intersections');
-ok(    abs($intersections[0]->[0] - 28.3160) < 0.0001
-    && abs($intersections[0]->[1] - 25.2410) < 0.0001
+ok(    abs($intersections[0]->[0] - 27.9906) < 0.0001
+    && abs($intersections[0]->[1] - 25.1781) < 0.0001
     , 'AoLo, Ao reversed, intersect pair, first'
 );
-ok(    abs($intersections[1]->[0] -  7.1836) < 0.0001
-    && abs($intersections[1]->[1] -  9.0395) < 0.0001
+ok(    abs($intersections[1]->[0] -  7.3363) < 0.0001
+    && abs($intersections[1]->[1] -  9.3431) < 0.0001
     , 'AoLo, Ao reversed, intersect pair, second'
 );
 
@@ -124,12 +124,12 @@ ok(    abs($intersections[1]->[0] -  7.1836) < 0.0001
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
 ok(scalar(@intersections) == 2, 'AoLo, Lo reversed, two intersections');
-ok(    abs($intersections[0]->[0] -  6.0534) < 0.0001
-    && abs($intersections[0]->[1] -  8.0422) < 0.0001
+ok(    abs($intersections[0]->[0] -  5.9310) < 0.0001
+    && abs($intersections[0]->[1] -  7.7617) < 0.0001
     , 'AoLo, Lo reversed, intersect pair, first'
 );
-ok(    abs($intersections[1]->[0] - 29.5409) < 0.0001
-    && abs($intersections[1]->[1] - 26.0493) < 0.0001
+ok(    abs($intersections[1]->[0] - 29.8363) < 0.0001
+    && abs($intersections[1]->[1] - 26.0891) < 0.0001
     , 'AoLo, Lo reversed, intersect pair, second'
 );
 
@@ -214,12 +214,12 @@ ok(    abs($intersections[0]->[0] - 15.9727) < 0.0001
     0.2
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(    abs($intersections[0]->[0] - 11.5659) < 0.0001
-    && abs($intersections[0]->[1] - 11.9326) < 0.0001
+ok(    abs($intersections[0]->[0] - 12.0630) < 0.0001
+    && abs($intersections[0]->[1] - 12.5003) < 0.0001
     , 'CoLo intersect pair, first'
 );
-ok(    abs($intersections[1]->[0] - 27.2036) < 0.0001
-    && abs($intersections[1]->[1] - 23.9215) < 0.0001
+ok(    abs($intersections[1]->[0] - 26.6012) < 0.0001
+    && abs($intersections[1]->[1] - 23.6463) < 0.0001
     , 'CoLo intersect pair, second'
 );
 
@@ -231,12 +231,12 @@ ok(    abs($intersections[1]->[0] - 27.2036) < 0.0001
     0.2
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(    abs($intersections[0]->[0] - 29.0594) < 0.0001
-    && abs($intersections[0]->[1] - 24.0443) < 0.0001
+ok(    abs($intersections[0]->[0] - 28.5561) < 0.0001
+    && abs($intersections[0]->[1] - 23.8450) < 0.0001
     , 'CoLo, Co reversed, intersect pair, second'
 );
-ok(    abs($intersections[1]->[0] - 10.7367) < 0.0001
-    && abs($intersections[1]->[1] -  9.9969) < 0.0001
+ok(    abs($intersections[1]->[0] - 11.1357) < 0.0001
+    && abs($intersections[1]->[1] - 10.4894) < 0.0001
     , 'CoLo, Co reversed, intersect pair, first'
 );
 
@@ -248,12 +248,12 @@ ok(    abs($intersections[1]->[0] - 10.7367) < 0.0001
     0.2
 );
 #diag("intersection count:".scalar(@intersections)."\n".join("\n",map {'['.join(',',@$_).']'} @intersections));
-ok(    abs($intersections[0]->[0] - 11.2407) < 0.0001
-    && abs($intersections[0]->[1] - 11.5524) < 0.0001
+ok(    abs($intersections[0]->[0] - 10.8052) < 0.0001
+    && abs($intersections[0]->[1] - 11.0319) < 0.0001
     , 'CoLo, Lo reversed, intersect pair, first'
 );
-ok(    abs($intersections[1]->[0] - 27.6025) < 0.0001
-    && abs($intersections[1]->[1] - 24.0965) < 0.0001
+ok(    abs($intersections[1]->[0] - 28.1434) < 0.0001
+    && abs($intersections[1]->[1] - 24.3246) < 0.0001
     , 'CoLo, Lo reversed, intersect pair, second'
 );
 

@@ -78,7 +78,7 @@ sub constructSegments {
         #        But make sure you don't mess up whatever you're doing with
         #        M here.
         if ($thisSegSpec=~/^H/i) {
-            $thisSegSpec=~s/\s//g;
+            $thisSegSpec=~s/\s//g; #/
             if ($i==1) {
                 $lastM=~/M\s*?[0-9\-\.eE]+\s*?[\s,]\s*?([0-9\-\.eE]+)/;
                 $thisSegSpec.=','.$1;
@@ -696,18 +696,20 @@ sub constructSegment {
     my $segTypeLetter = substr($segspec,0,1);
     my @lastpoints = $self->extractPointsFromPathSpec($segspecprevious);
     my @thesepoints= $self->extractPointsFromPathSpec($segspec);
+
     if    ($segTypeLetter eq 'C') {
+
         if ( # check for degenerate curve
             ($lastpoints[$#lastpoints]->[0] eq $thesepoints[0]->[0] && $lastpoints[$#lastpoints]->[0] eq $thesepoints[1]->[0] && $lastpoints[$#lastpoints]->[0] eq $thesepoints[2]->[0]) ||
             ($lastpoints[$#lastpoints]->[1] eq $thesepoints[0]->[1] && $lastpoints[$#lastpoints]->[1] eq $thesepoints[1]->[1] && $lastpoints[$#lastpoints]->[1] eq $thesepoints[2]->[1])
             ) {
             my $ret=Math::MPath::LineSegment->new($lastpoints[$#lastpoints],$thesepoints[2],$self->{precision},$self->{isLite});
             return $ret;
-            }
+        }
         else {
             return Math::MPath::BezierCubicSegment->new($lastpoints[$#lastpoints],@thesepoints,$self->{precision},$self->{isLite});
-            }
         }
+    }
     # TRYING TO CHEAT HERE
     if    ($segTypeLetter eq 'Q') {
         if ( # check for degenerate curve
@@ -817,6 +819,19 @@ my %ref2precedence = (
     'Math::MPath::BezierQuadraticSegment' => 2,
     'Math::MPath::BezierCubicSegment'     => 3,
 );
+
+sub setOffset {
+    my ($self, $offset) = @_;
+    $self->{offset} = $offset;
+    $_->{offset} = $offset for @{$self->{pathSegments}};
+    #warn($_," off: ",$_->{offset}) for @{$self->{pathSegments}};
+}
+sub removeOffset {
+    my ($self) = @_;
+    delete($self->{offset});
+    delete($_->{offset}) for @{$self->{pathSegments}};
+}
+
 sub getSegSegIntersects {
     my ($seg1,$seg2) = @_;
     my $swap = 0;
@@ -837,6 +852,8 @@ sub getSegSegIntersects {
     # what should results of all these look like?
     # think [x,y,seg1_t,seg2_t] will do
 
+    warn "$case\n";
+
     if    ($case eq 'LL') {              push @ret, Math::MPath::Intersections::intersect_LL($seg1,$seg2);}
     elsif ($case eq 'LoL' ||
            $case eq 'LLo' ||
@@ -856,6 +873,12 @@ sub getSegSegIntersects {
            $case eq 'A1A1o' ||
            $case eq 'A1oA1o'
     )                       {            push @ret, Math::MPath::Intersections::intersect_A1oA1o($seg1, $seg2);}
+
+    elsif ($case eq 'AL') {              push @ret, Math::MPath::Intersections::intersect_AL($seg1, $seg2);}
+    elsif ($case eq 'AoL' ||
+           $case eq 'ALo' ||
+           $case eq 'AoLo'
+    )                     {              push @ret, Math::MPath::Intersections::intersect_AoLo($seg1,$seg2);}
 
     elsif ($case eq 'AA'  ||
            $case eq 'A1A' ||

@@ -137,11 +137,12 @@ sub new {
                       # sqrt( -(Q^3) )
                       sqrt(-(((3.0*$self->{CdA} - $self->{BdA}**2)/9.0)**3));
 
-                     $toAcos = 1.0 if $toAcos > 1;
-                     $toAcos = -1.0 if $toAcos < -1;
+                    $toAcos =  1.0 if $toAcos >  1;
+                    $toAcos = -1.0 if $toAcos < -1;
+                    $toAcos = 0 + "$toAcos" if ref($toAcos);
 
-                     #      this is arccosine
-                     return atan2(sqrt(1.0 - $toAcos * $toAcos),$toAcos);
+                    #      this is arccosine
+                    return atan2(sqrt(1.0 - $toAcos * $toAcos),$toAcos);
 
     };
 
@@ -164,20 +165,22 @@ sub new {
                       # sqrt( -(Q^3) )
                       sqrt(-(((3.0*$self->{GdE} - $self->{FdE}**2)/9.0)**3));
 
-                     $toAcos = 1.0 if $toAcos > 1;
-                     $toAcos = -1.0 if $toAcos < -1;
+                    $toAcos =  1.0 if $toAcos >  1;
+                    $toAcos = -1.0 if $toAcos < -1;
+                    $toAcos = 0 + "$toAcos" if ref($toAcos);
 
-                     #      this is arccosine
-                     return atan2(sqrt(1.0 - $toAcos * $toAcos),$toAcos);
+                    #      this is arccosine
+                    return atan2(sqrt(1.0 - $toAcos * $toAcos),$toAcos);
 
     };
 
 
     my $D = sub {
-
+    
+                #warn "D($_[0]) inf\n" if $self->{A} == 0;
                 return Inf if $self->{A} == 0;
 
-                return
+                my $ret =
                        ( (3*$self->{CdA} - $self->{BdA}**2)/9.0 )**3 #   Q^3
                      + (                                               # + R^2
                         # R
@@ -191,6 +194,9 @@ sub new {
                         )
                         / 54.0
                        )**2;
+                #warn "D($_[0])\n",(( (3*$self->{CdA} - $self->{BdA}**2)/9.0 )**3)," + ",(((   9.0  * $self->{BdA}*$self->{CdA} - 27.0 * (($self->{D} - $_[0]) / $self->{A}) - 2.0  * $self->{BdA}**3)/ 54.0)**2),"\nret: $ret\n";
+                #$ret = 0 + "$ret" if ref($ret);
+                return $ret;
     };
 
     my $D_ofy = sub { 
@@ -326,17 +332,17 @@ sub new {
     #my $eqn_8 = sub {return one of above + ($self->{BdA}/3) then /2, then negated, then minus - ($self->{BdA}/3) } # the D eq 0 duplicate real root
 
     my $eqn_1to4_prime  = sub {
+        #warn "eqn_1to4_prime($_[0])\n";
         my $x=$_[0];
 
         my $thisD = $D->($x); # this one doesn't use D directly, but we want to do the same x adjustment as in the second derivative code, so they correspond
         # this is just to adjust x in this case
         if ($thisD<0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{minx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{minx}));}
+            my $d1 = $D->($x=nexttoward($x,$self->{minx}-1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{minx}-1));}
             my $dir = ($d1>$thisD) ? $self->{minx} : $self->{maxx};
             while ($thisD<0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
-
         my $preS = $preS->($x);
         my $preT = $preT->($x);
         my $thissqrtD = $sqrtD->($x);
@@ -357,9 +363,9 @@ sub new {
         my $thisD = $D->($x);
 
         if ($thisD<0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{minx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{minx}));}
-            my $dir = ($d1>$thisD) ? $self->{minx} : $self->{maxx};
+            my $d1 = $D->($x=nexttoward($x,$self->{minx}-1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{minx}-1));}
+            my $dir = ($d1>$thisD) ? $self->{minx}-1 : $self->{maxx}+1;
             while ($thisD<0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
 
@@ -438,13 +444,14 @@ sub new {
     my $eqn_7_ofy = sub {return Inf if $self->{E} eq 0; return 2.0*sqrt(-((3.0*$self->{GdE} - $self->{FdE}**2)/9.0)) * cos( ($theta_ofy->($_[0]) + $fourpi) / 3.0) - $self->{FdE}/3.0};
 
     my $eqn_5_prime  = sub {
+        #warn "p5\n";
         my $x=$_[0];
         my $thisD = $D->($x);
 
         if ($thisD>0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{maxx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}));}
-            my $dir = ($d1<$thisD) ? $self->{maxx} : $self->{minx};
+            my $d1 = $D->($x=nexttoward($x,$self->{maxx}+1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}+1));}
+            my $dir = ($d1<$thisD) ? $self->{maxx}+1 : $self->{minx}-1;
             while ($thisD>0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
 
@@ -456,9 +463,9 @@ sub new {
         my $thisD = $D->($x);
 
         if ($thisD>0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{maxx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}));}
-            my $dir = ($d1<$thisD) ? $self->{maxx} : $self->{minx};
+            my $d1 = $D->($x=nexttoward($x,$self->{maxx}+1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}+1));}
+            my $dir = ($d1<$thisD) ? $self->{maxx}+1 : $self->{minx}-1;
             while ($thisD>0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
 
@@ -472,13 +479,14 @@ sub new {
     };
 
     my $eqn_6_prime  = sub {
+        #warn "p6\n";
         my $x=$_[0];
         my $thisD = $D->($x);
 
         if ($thisD>0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{maxx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}));}
-            my $dir = ($d1<$thisD) ? $self->{maxx} : $self->{minx};
+            my $d1 = $D->($x=nexttoward($x,$self->{maxx}+1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}+1));}
+            my $dir = ($d1<$thisD) ? $self->{maxx}+1 : $self->{minx}-1;
             while ($thisD>0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
 
@@ -490,9 +498,9 @@ sub new {
         my $thisD = $D->($x);
 
         if ($thisD>0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{maxx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}));}
-            my $dir = ($d1<$thisD) ? $self->{maxx} : $self->{minx};
+            my $d1 = $D->($x=nexttoward($x,$self->{maxx}+1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}+1));}
+            my $dir = ($d1<$thisD) ? $self->{maxx}+1 : $self->{minx}-1;
             while ($thisD>0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
 
@@ -507,15 +515,18 @@ sub new {
     };
 
     my $eqn_7_prime  = sub {
+        #warn "p7($_[0] of $self->{maxx})\n";
         my $x=$_[0];
         my $thisD = $D->($x);
 
         if ($thisD>0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{maxx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}));}
-            my $dir = ($d1<$thisD) ? $self->{maxx} : $self->{minx};
+            my $d1 = $D->($x=nexttoward($x,$self->{maxx}+1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}+1));}
+            my $dir = ($d1<$thisD) ? $self->{maxx}+1 : $self->{minx}-1;
             while ($thisD>0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
+
+        #warn "return ($self->{cubsqrtofnegQ}/(3.0*$self->{A})) * (sin(($theta->($x) + $fourpi)/3.0) / (sqrt(-$thisD)));\n";
 
         return ($self->{cubsqrtofnegQ}/(3.0*$self->{A})) * (sin(($theta->($x) + $fourpi)/3.0) / (sqrt(-$thisD)));
     };
@@ -525,9 +536,9 @@ sub new {
         my $thisD = $D->($x);
 
         if ($thisD>0) {
-            my $d1 = $D->($x=nexttoward($x,$self->{maxx}));
-            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}));}
-            my $dir = ($d1<$thisD) ? $self->{maxx} : $self->{minx};
+            my $d1 = $D->($x=nexttoward($x,$self->{maxx}+1));
+            while ($d1 == $thisD) {$d1 = $D->($x=nexttoward($x,$self->{maxx}+1));}
+            my $dir = ($d1<$thisD) ? $self->{maxx}+1 : $self->{minx}-1;
             while ($thisD>0) {$thisD = $D->($x=nexttoward($x,$dir)); }
         }
 
@@ -547,8 +558,8 @@ sub new {
         my $thisD = $D_ofy->($y);
 
         if ($thisD>0) {
-            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}));
-            my $dir = ($d1<$thisD) ? $self->{maxy} : $self->{miny};
+            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}+1));
+            my $dir = ($d1<$thisD) ? $self->{maxy}+1 : $self->{miny}-1;
             while ($thisD>0) {$thisD = $D_ofy->($y=nexttoward($y,$dir)); }
             }
 
@@ -559,8 +570,8 @@ sub new {
         my $thisD = $D_ofy->($y);
 
         if ($thisD>0) {
-            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}));
-            my $dir = ($d1<$thisD) ? $self->{maxy} : $self->{miny};
+            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}+1));
+            my $dir = ($d1<$thisD) ? $self->{maxy}+1 : $self->{miny}-1;
             while ($thisD>0) {$thisD = $D_ofy->($y=nexttoward($y,$dir)); }
             }
 
@@ -578,8 +589,8 @@ sub new {
         my $thisD = $D_ofy->($y);
 
         if ($thisD>0) {
-            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}));
-            my $dir = ($d1<$thisD) ? $self->{maxy} : $self->{miny};
+            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}+1));
+            my $dir = ($d1<$thisD) ? $self->{maxy}+1 : $self->{miny}-1;
             while ($thisD>0) {$thisD = $D_ofy->($y=nexttoward($y,$dir)); }
             }
 
@@ -590,8 +601,8 @@ sub new {
         my $thisD = $D_ofy->($y);
 
         if ($thisD>0) {
-            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}));
-            my $dir = ($d1<$thisD) ? $self->{maxy} : $self->{miny};
+            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}+1));
+            my $dir = ($d1<$thisD) ? $self->{maxy}+1 : $self->{miny}-1;
             while ($thisD>0) {$thisD = $D_ofy->($y=nexttoward($y,$dir)); }
             }
 
@@ -609,8 +620,8 @@ sub new {
         my $thisD = $D_ofy->($y);
 
         if ($thisD>0) {
-            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}));
-            my $dir = ($d1<$thisD) ? $self->{maxy} : $self->{miny};
+            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}+1));
+            my $dir = ($d1<$thisD) ? $self->{maxy}+1 : $self->{miny}-1;
             while ($thisD>0) {$thisD = $D_ofy->($y=nexttoward($y,$dir)); }
             }
 
@@ -621,8 +632,8 @@ sub new {
         my $thisD = $D_ofy->($y);
 
         if ($thisD>0) {
-            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}));
-            my $dir = ($d1<$thisD) ? $self->{maxy} : $self->{miny};
+            my $d1 = $D_ofy->($y=nexttoward($y,$self->{maxy}+1));
+            my $dir = ($d1<$thisD) ? $self->{maxy}+1 : $self->{miny}-1;
             while ($thisD>0) {$thisD = $D_ofy->($y=nexttoward($y,$dir)); }
             }
 
@@ -660,7 +671,8 @@ sub new {
                                  1
                                 );
 
-    #warn "\nallts\n",join("\n",map {$_.' : '.$self->bezierEvalXofT($_)} @all_ts),"\n";
+
+    # warn "\nallts\n",join("\n",map {$_.' : '.$self->bezierEvalXofT($_)} @all_ts),"\n";
 
 
     # This is ultimately to find ts where D(x(t)) crosses 0 (not just touches, but crosses)
@@ -671,7 +683,7 @@ sub new {
     #my $y_d0_1 =  2.0*$self->{E}*sqrt(-( (3.0*$self->{GdE} - $self->{FdE}**2)/9.0 )**3) - $self->{E}*($self->{FdE}*$self->{GdE})/(3.0) + $self->{E}*(2.0*$self->{FdE}**3)/(27.0) + $self->{H};
     #my $y_d0_2 = -2.0*$self->{E}*sqrt(-( (3.0*$self->{GdE} - $self->{FdE}**2)/9.0 )**3) - $self->{E}*($self->{FdE}*$self->{GdE})/(3.0) + $self->{E}*(2.0*$self->{FdE}**3)/(27.0) + $self->{H};
 
-    #warn "x_d0s: $x_d0_1, $x_d0_2\n";
+    # warn "x_d0s: $x_d0_1, $x_d0_2\n";
 
     my @more_t;
     my @more_x;
@@ -680,7 +692,7 @@ sub new {
 
     if ($x_d0_1 && $x_d0_1 !~ /nan/i && $x_d0_1 > $self->{minx} && $x_d0_1 < $self->{maxx}) {
         # then figure and add the right xs and ts to capture that D(x)==0 crossing
-        # The "zeroing" xs you have, if in bez xrange, probably don't exactly zero the D(x) function
+        # The 'zeroing' xs you have, if in bez xrange, probably don't exactly zero the D(x) function
         # If D(x) > 0, you figure which of eqns 1-4 to use to get the theta we need to add to the list.
         # If D(x) == 0 for real, maybe get that eqn8 working to get the theta.
         # If D(x) < 0, there are three thetas in play - two almost duplicate, and you should already have the one that's close
@@ -698,13 +710,14 @@ sub new {
 
 
         my $d1 = $D->($x_d0_1);
-        my $d2x=nexttoward($x_d0_1,0);
+# attempt at same guessed "fix" as in copy-paste version below
+#        my $d2x=nexttoward($x_d0_1,0);
+my $d2x=nexttoward($x_d0_1,$self->{minx});
         my $d2 = $D->($d2x);
-        while ( $d1 == $d2 ) { $d2x = nexttoward($d2x,0); $d2 = $D->($d2x); }
+#        while ( $d1 == $d2 ) { $d2x = nexttoward($d2x,0); $d2 = $D->($d2x); }
+while ( $d1 == $d2 ) { $d2x = nexttoward($d2x,$self->{minx}); $d2 = $D->($d2x); }
 
         my ($dirxDneg,$dirxDpos);
-
-        #warn "        if ($d2 < $d1) [",($D->(nexttoward($x_d0_1,0)) < $d1),"]\n";
 
         if ($d2 < $d1) {
             $dirxDneg = $self->{minx};
@@ -791,7 +804,8 @@ sub new {
 
         my $d1 = $D->($x_d0_2);
         my ($dirxDneg,$dirxDpos);
-        if ($D->(nexttoward($x_d0_2,0)) < $d1) {
+#        if ($D->(nexttoward($x_d0_2,0)) < $d1) {
+        if ($D->(nexttoward($x_d0_2,$self->{minx})) < $d1) { # is this right? why was I using 0 before? "fixing" this without re-understanding all this, "fix" above too, where you copied this from?
             $dirxDneg = $self->{minx};
             $dirxDpos = $self->{maxx};
         }
@@ -828,8 +842,10 @@ sub new {
         $d1 = $D->($self->bezierEvalXofT($t1));
         my ($dirtDneg,$dirtDpos);
         my $t2 = nexttoward($t1,0);
-        my $d2 = $D->($self->bezierEvalXofT(nexttoward($t1,0)));
-        while ($d2 == $d1) { $d2 = $D->($self->bezierEvalXofT($t2 = nexttoward($t2,0))); }
+#        my $d2 = $D->($self->bezierEvalXofT(nexttoward($t1,0)));
+        my $d2 = $D->($self->bezierEvalXofT($t2));
+        while ($d2 == $d1) {$d2 = $D->($self->bezierEvalXofT($t2 = nexttoward($t2,0))); }
+        warn "ww6.5\n" if $whilewatch;
         if ($d2 < $d1) {
             $dirtDneg = 0;
             $dirtDpos = 1;
@@ -911,7 +927,7 @@ sub new {
         my $e0=abs($m0-$m1);
         my $e1=abs($m0-$m1);
 
-        #warn "\nstart $all_ts[$tind]\nnewt,e1,m1: $newt, $e1, $m1\n";
+        # warn "\nstart $all_ts[$tind]\nnewt,e1,m1: $newt, $e1, $m1\n";
 
         my $cnt=0; # debug safety limit
 
@@ -927,7 +943,7 @@ sub new {
             $m1 = $self->bezierEvalXPrimeofT($newt);
             $e0 = $e1;
             $e1=abs($m0-$m1);
-            #warn "X[$cnt $dir] newt,e1,m1: $lastnewt to $newt, $e1, $m1\n";
+            # warn "X[$cnt $dir] newt,e1,m1: $lastnewt to $newt, $e1, $m1\n";
             $thisdir = $m0 > $m1 ? 0 : 1;
         }
         
@@ -949,7 +965,7 @@ sub new {
 
 
     my @m0ts = ((!$self->{isLite})?$self->solveYPrimeforThetaBig(Math::BigFloat->bzero()):$self->solveYPrimeforTheta(0));
-
+#warn "mm0ts: ",join(', ',@m0ts),"\n" if scalar(@m0ts)==2;
 
     my @m0xs;
 
@@ -964,7 +980,7 @@ sub new {
         my $e1=abs($m0-$m1);
         my $thisdir = $dir;
 
-        #warn "\nstart $m0ts[$tind]\ne1,m1: $e1, $m1, $dir\n";
+        # warn "\nstart $m0ts[$tind]\ne1,m1: $e1, $m1, $dir\n";
 
         my $cnt=0; # debug safety limit
         while (
@@ -979,7 +995,7 @@ sub new {
             $m1 = $self->bezierEvalYPrimeofT($newt);
             $e0 = $e1;
             $e1=abs($m0-$m1);
-            #warn "Y[$cnt] e1,m1: $e1, $m1, $m0\n";
+            # warn "Y[$cnt] e1,m1: $e1, $m1, $m0\n";
             $thisdir = $m0 > $m1 ? 0 : 1;
         }
 
@@ -989,10 +1005,13 @@ sub new {
         #warn "new t: $newt\n";
         $all_ts[$tind] = $newt;
     }
+#warn "mm0ts after: ",scalar(@m0ts),"\n" if scalar(@m0ts)==2;
 
     # split intervals that contain dy/dt = 0 ts
     for (my $ind=$#t_intervals;$ind > -1;$ind--) {
-        for (my $m0ts_ind = 0; $m0ts_ind < @m0ts; $m0ts_ind++) {
+#        for (my $m0ts_ind = 0; $m0ts_ind < @m0ts; $m0ts_ind++) {
+        for (my $m0ts_ind = $#m0ts; $m0ts_ind > -1; $m0ts_ind--) {
+#warn "splice in mt? [",($m0ts[$m0ts_ind]->[0] > $t_intervals[$ind]->[0] && $m0ts[$m0ts_ind]->[0] < $t_intervals[$ind]->[1]),"] $t_intervals[$ind]->[0] < $m0ts[$m0ts_ind]->[0] < $t_intervals[$ind]->[1]\n";;
             if ($m0ts[$m0ts_ind]->[0] > $t_intervals[$ind]->[0] && $m0ts[$m0ts_ind]->[0] < $t_intervals[$ind]->[1]) {
                 splice @t_intervals, $ind+1, 0, [$m0ts[$m0ts_ind]->[1],$t_intervals[$ind]->[1]];
                 splice @x_intervals, $ind+1, 0, [$m0xs[$m0ts_ind]->[1],$x_intervals[$ind]->[1]];
@@ -1128,7 +1147,7 @@ sub new {
                               [$eqn_6,$eqn_6_prime,$eqn_6_2prime],
                               [$eqn_7,$eqn_7_prime,$eqn_7_2prime] ) {
                 my $eqn = $eqns->[0];
-                
+
                 my $tmid = ($eqn->($xa) + $eqn->($xb))/2;
 
                 my ($tlow,$thigh) = ($t_intervals[$i]->[0]<$t_intervals[$i]->[1]) ? ($t_intervals[$i]->[0],$t_intervals[$i]->[1]) : ($t_intervals[$i]->[1],$t_intervals[$i]->[0]);
@@ -1478,8 +1497,12 @@ sub X_offset{
         $reversed //= $tspan->[3];
     }
     my $x = $self->bezierEvalXofT($t);
+#warn "pre tp\n";
     my $tp = $tprimefunc->($x);
+$tp = 0 + "$tp" if ref($tp);
+#warn "tp: $tp : ",ref($tp),"\n";
     my $y_prime_of_x = $tp == Inf ? Inf : $self->{Em3} * $t**2 * $tp  +  $self->{Fm2} * $t * $tp + $self->{G} * $tp;
+#warn "y_prime_of_x: $y_prime_of_x : ",ref($y_prime_of_x),"\n";
     my $a = atan2($y_prime_of_x,1) + $pi/2 * ($reversed?-1:1);
     my $retx = $x + $offset * cos($a);
     return $retx;
@@ -1493,8 +1516,12 @@ sub Y_offset{
     }
     my $x = $self->bezierEvalXofT($t);
     my $y = $self->bezierEvalYofT($t);
+#warn "2pre tp\n";
     my $tp = $tprimefunc->($x);
+$tp = 0 + "$tp" if ref($tp);
+#warn "2tp: $tp : ",ref($tp),"\n";
     my $y_prime_of_x = $tp == Inf ? Inf : $self->{Em3} * $t**2 * $tp  +  $self->{Fm2} * $t * $tp + $self->{G} * $tp;
+#warn "2y_prime_of_x: $y_prime_of_x : ",ref($y_prime_of_x),"\n";
     my $a = atan2($y_prime_of_x,1) + $pi/2 * ($reversed?-1:1);
     my $rety = $y + $offset * sin($a);
     return $rety;
@@ -1532,6 +1559,12 @@ sub point_offset {
 # used in Intersections.pm
 sub t_from_xoff {
     my ($self, $xoff, $offset, $tbounds, $tprimefunc, $reversed) = @_;
+
+    #if (0 + $offset eq 0) {
+    #    if ($xoff eq $self->{minx}) {return 0;}
+    #    elsif ($xoff eq $self->{maxx}) {return 1;}
+    #    else {return $self->solveXforTheta($xoff);}
+    #}
 
     my $find_matching_offset_x = sub {
         #warn "findloop\n";
@@ -2586,6 +2619,7 @@ sub point {
 sub bezierEvalXofT {
     my $self = shift;
     my $t    = shift;
+    #warn "    return ",(((($self->{A} * $t) + $self->{B}) * $t + $self->{C}) * $t)," + $self->{D};\n";
     return ((($self->{A} * $t) + $self->{B}) * $t + $self->{C}) * $t + $self->{D};
     }
 sub bezierEvalXofTBig {
@@ -3036,12 +3070,20 @@ sub solveXPrimeforTheta { # x's slope related to theta (not y)
     my $self = shift;
     my $xp    = shift;
     # x'= 3At^2+  2Bt  +     C
-    # 0 = 3At^2+  2Bt  +     C - x'
+    # 0 = 3At^2+  2Bt  +     C - x'    
+    if ($self->{A} eq 0 && $self->{B} eq 0) {    # X(t) is linear
+        if ($xp eq $self->{C}) {return (0,1);}   # x' happens to match constant slope - really every value of t corresponds to this slope. not clear how to handle this.
+        else {return ();}
+    }
     return sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)} &quadraticformula($self->{Am3},$self->{Bm2},$self->{C} - ((ref($xp))?$xp:$xp),1);
     }
 sub solveXPrimeforThetaBig { # x's slope related to theta (not y)
     my $self = shift;
     my $xp    = shift;
+    if ($self->{A_Big} eq 0 && $self->{B_Big} eq 0) {    # X(t) is linear
+        if ($xp eq $self->{C_Big}) {return (0,1);}   # x' happens to match constant slope - really every value of t corresponds to this slope. not clear how to handle this.
+        else {return ();}
+    }
     return sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)} &quadraticformula($self->{Am3_Big},$self->{Bm2_Big},$self->{C_Big} - ((ref($xp))?$xp:$xp),1);
     }
 
@@ -3051,11 +3093,19 @@ sub solveXPrimeforTheta_noFilter {
     my $xp    = shift;
     # x'= 3At^2+  2Bt  +     C
     # 0 = 3At^2+  2Bt  +     C - x'
+    if ($self->{A} eq 0 && $self->{B} eq 0) {    # X(t) is linear
+        if ($xp eq $self->{C}) {return (0,1);}   # x' happens to match constant slope - really every value of t corresponds to this slope. not clear how to handle this.
+        else {return ();}
+    }
     return sort {$a<=>$b} &quadraticformula($self->{Am3},$self->{Bm2},$self->{C} - ((ref($xp))?$xp:$xp),1);
     }
 sub solveXPrimeforThetaBig_noFilter {
     my $self = shift;
     my $xp    = shift;
+    if ($self->{A_Big} eq 0 && $self->{B_Big} eq 0) {    # X(t) is linear
+        if ($xp eq $self->{C_Big}) {return (0,1);}   # x' happens to match constant slope - really every value of t corresponds to this slope. not clear how to handle this.
+        else {return ();}
+    }
     return sort {$a<=>$b} &quadraticformula($self->{Am3_Big},$self->{Bm2_Big},$self->{C_Big} - ((ref($xp))?$xp:$xp),1);
     }
 
@@ -3065,19 +3115,34 @@ sub solveYPrimeforTheta {
     my $yp    = shift;
     # y'= 3Et^2+  2Ft  +     G
     # 0 = 3Et^2+  2Ft  +     G - y'
+    if ($self->{E} eq 0 && $self->{F} eq 0) {    # Y(t) is linear
+        if ($xp eq $self->{G}) {return (0,1);}   # y' happens to match constant slope - really every value of t corresponds to this slope. not clear how to handle this.
+        else {return ();}
+    }
     return sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)} &quadraticformula($self->{Em3},$self->{Fm2},$self->{G} - ((ref($yp))?$yp:$yp),1);
     }
 sub solveYPrimeforThetaBig {
     my $self = shift;
     my $yp    = shift;
+    if ($self->{E_Big} eq 0 && $self->{F_Big} eq 0) {    # Y(t) is linear
+        if ($xp eq $self->{G_Big}) {return (0,1);}   # y' happens to match constant slope - really every value of t corresponds to this slope. not clear how to handle this.
+        else {return ();}
+    }
     return sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)} &quadraticformula($self->{Em3_Big},$self->{Fm2_Big},$self->{G_Big} - ((ref($yp))?$yp:$yp),1);
     }
-sub solvefprimefortheta { #obsolete? since this is just slopeTangent(x) ?
+sub solvefPrimeforT {
     my $self = shift;
     my $fp    = shift;
     # f'= y'/x' = (3Et^2 + 2Ft + G) / (3At^2 + 2Bt + C)
     # 0 = 3(E-f'A)t^2 + 2(F-f'B)t + (G-f'C)
     return sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)} &quadraticformula($self->{Em3} - $fp * $self->{Am3},$self->{Fm2} - $fp * $self->{Bm2},$self->{G} - $fp * $self->{C},1);
+    }
+sub solveFPrimeforT {
+    my $self = shift;
+    my $Fp    = shift;
+    # F'= x'/y' = (3At^2 + 2Bt + C) / (3Et^2 + 2Ft + G)
+    # 0 = 3(A-F'E)t^2 + 2(B-F'F)t + (C-F'G) # ok, F gets used there for two different things, but you know what I mean - "F" and "F'"
+    return sort {$a<=>$b} grep {(1 > $_ || 1 eq $_) && ($_ > 0 || $_ eq 0)} &quadraticformula($self->{Am3} - $Fp * $self->{Em3},$self->{Bm2} - $Fp * $self->{Fm2},$self->{C} - $Fp * $self->{G},1);
     }
 
 our $BigFloatOneHalf = Math::BigFloat->new('0.5');
