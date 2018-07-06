@@ -852,7 +852,7 @@ sub getSegSegIntersects {
     # what should results of all these look like?
     # think [x,y,seg1_t,seg2_t] will do
 
-    warn "$case\n";
+    #warn "$case\n";
 
     if    ($case eq 'LL') {              push @ret, Math::MPath::Intersections::intersect_LL($seg1,$seg2);}
     elsif ($case eq 'LoL' ||
